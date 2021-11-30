@@ -1,0 +1,41 @@
+[
+    {
+        "folder": "layer1"
+    },
+    {
+        "folder": "layer2",
+        "title": "Name of 2 layer"
+    },
+    {
+        "folder": "layer3",
+        "title": "Name of 3 layer"
+    },
+    {
+        "folder": "layer3 copy",
+        "title": "Name of 4 layer"
+    },
+    {
+        "folder": "layer3 copy 2",
+        "title": "Name of 5 layer"
+    },
+    {
+        "folder": "layer3 copy 4",
+        "title": "Name of 6 layer"
+    },
+    {
+        "folder": "layer3 copy 5",
+        "title": "Name of 6 layer"
+    },
+    {
+        "folder": "layer3 copy 6",
+        "title": "Name of 7 layer"
+    },
+    {
+        "folder": "layer3 copy 7",
+        "title": "Name of 8 layer"
+    },
+    {
+        "folder": "layer3 copy 7",
+        "title": "Name of 8 layer"
+    }
+]
