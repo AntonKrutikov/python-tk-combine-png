@@ -155,7 +155,7 @@ for layer in layers:
 
         btn_left.grid(row=i, column=0, sticky='e', padx=5)
         lbl_filename.grid(row=i, column=1, sticky='we')
-        btn_right.grid(row=i, column=2, sticky='w', padx=5)
+        btn_right.grid(row=i, column=2, sticky='w', padx=10)
         i+=1
 
         separator.grid(row=i, column=0, columnspan=3, pady=(10,0), sticky="we")
