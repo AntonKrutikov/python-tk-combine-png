@@ -180,8 +180,8 @@ def save():
 
     lbl_saved['text'] = './out/%s.png' % file_index
 
-btn_save = tk.Button(master=window, text="save", command=save)
-btn_save.grid(row=1, column=1, pady=10)
+btn_save = tk.Button(master=window, text="save" ,command=save)
+btn_save.grid(row=1, column=1, sticky='nwes', pady=(5,10), padx=2)
 
 lbl_saved = tk.Label(master=window)
 lbl_saved.grid(row=1, column=0)
