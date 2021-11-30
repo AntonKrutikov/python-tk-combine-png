@@ -167,12 +167,14 @@ def save():
     optimized = img.convert('P')
     optimized.save('./out/%s.min.png' % file_index)
 
+    result_layers = []
     for layer in layers:
         if 'current' in layer:
             data = layer.copy()
             data.pop('files', None)
-            with open('./out/%s.json' % file_index, 'w') as outfile:
-                json.dump(data, outfile)
+            result_layers.append(data)
+    with open('./out/%s.json' % file_index, 'w') as outfile:
+        json.dump(result_layers, outfile)
 
     lbl_saved['text'] = './out/%s.png' % file_index
 
