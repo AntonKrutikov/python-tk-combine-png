@@ -104,10 +104,10 @@ def update_image(e=None):
 
 update_image()
 
-frame = tk.Frame(master=window, highlightthickness=1, borderwidth=1, relief="groove")
+frame = VerticalScrolledFrame(master=window, highlightthickness=1, borderwidth=1, relief="groove")
 frame.grid(row=0,column=1, sticky='nwse')
 
-frame.columnconfigure(1, weight=1, minsize=150)
+frame.inner.columnconfigure(1, weight=1, minsize=150)
 
 def btn_left_handler(label, layer):
     indx = layer['files'].index(layer['current'])
@@ -137,15 +137,15 @@ for layer in layers:
         file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
         lbl_filename = tk.Label(master=frame,text=file_title, anchor='center', font=("Arial", 16))
 
-        btn_left = tk.Button(master=frame,text="<", command=lambda arg1=lbl_filename, arg2=layer:btn_left_handler(arg1, arg2) )
+        btn_left = tk.Button(master=frame,text="<", command=lambda arg1=lbl_filename, arg2=layer:btn_left_handler(arg1, arg2))
         btn_right = tk.Button(master=frame,text=">", command=lambda arg1=lbl_filename, arg2=layer:btn_right_handler(arg1,arg2))
 
         lbl_layer_title.grid(row=i, column=0, columnspan=3, sticky="ew")
         i+=1
 
-        btn_left.grid(row=i, column=0, sticky='w')
+        btn_left.grid(row=i, column=0, sticky='w', padx=5)
         lbl_filename.grid(row=i, column=1, sticky='we')
-        btn_right.grid(row=i, column=2, sticky='e')
+        btn_right.grid(row=i, column=2, sticky='e', padx=5)
         i+=1
 
         separator.grid(row=i, column=0, columnspan=3, pady=(10,0), sticky="ew")
@@ -186,7 +186,7 @@ btn_save.grid(row=1, column=1, sticky='nwes', pady=(5,10), padx=2)
 lbl_saved = tk.Label(master=window)
 lbl_saved.grid(row=1, column=0)
 
-window.minsize(900,600)
+window.minsize(900,300)
 window.columnconfigure(0, weight=1)
 
 window.rowconfigure(0, weight=1)
