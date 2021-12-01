@@ -117,8 +117,12 @@ def btn_left_handler(label, layer):
     indx = layer['files'].index(layer['current'])
     layer['current'] = layer['files'][indx-1]
     file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
-    file_title = file_title[0:20]+'...' if len(file_title) > 20 else file_title
+    anchor='center'
+    if len(file_title) > 20:
+        file_title = file_title[0:20]+'...'
+        anchor = 'w'
     label['text'] = file_title
+    label['anchor']=anchor
     lbl_saved['text'] = ''
     update_image()
 
@@ -127,7 +131,12 @@ def btn_right_handler(label, layer):
     indx = 0 if indx == len(layer['files'])-1 else indx+1
     layer['current'] = layer['files'][indx]
     file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
-    file_title = file_title[0:20]+'...' if len(file_title) > 20 else file_title
+    anchor='center'
+    if len(file_title) > 20:
+        file_title = file_title[0:20]+'...'
+        anchor = 'w'
+    label['text'] = file_title
+    label['anchor']=anchor
     label['text'] = file_title
     lbl_saved['text'] = ''
     update_image()
@@ -138,14 +147,16 @@ for layer in layers:
     if 'current' in layer: #show only layers with minimum 1 file exists
         #Use folder title from json file or folder name as fallback
         layer_title = layer['title'] if 'title' in layer else layer['folder']
-        lbl_layer_title = tk.Label(master=frame, text="%s" % layer_title, width=20, borderwidth = 3, font=("Arial bold", 12), anchor='w')
+        lbl_layer_title = tk.Label(master=frame, text="%s" % layer_title, width=20, borderwidth = 3, font=('system', 12, 'bold'), anchor='w')
         separator=ttk.Separator(master=frame,orient='horizontal')
 
         #Use file title from json file or file name as fallback
         file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
-        file_title = file_title[0:10] if len(file_title) > 10 else file_title
-        print(file_title)
-        lbl_filename = tk.Label(master=frame,text=file_title, width=20, font=("Arial", 16))
+        anchor='center'
+        if len(file_title) > 20:
+            file_title = file_title[0:20]+'...'
+            anchor = 'w'
+        lbl_filename = tk.Label(master=frame,text=file_title, width=20, font=('system', 12), anchor=anchor)
 
         btn_left = tk.Button(master=frame,text="<", command=lambda arg1=lbl_filename, arg2=layer:btn_left_handler(arg1, arg2), width=1)
         btn_right = tk.Button(master=frame,text=">", command=lambda arg1=lbl_filename, arg2=layer:btn_right_handler(arg1,arg2), width=1)
