@@ -118,8 +118,8 @@ def btn_left_handler(label, layer):
     layer['current'] = layer['files'][indx-1]
     file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
     anchor='center'
-    if len(file_title) > 20:
-        file_title = file_title[0:20]+'...'
+    if len(file_title) > 18:
+        file_title = file_title[0:18]+'...'
         anchor = 'w'
     label['text'] = file_title
     label['anchor']=anchor
@@ -132,8 +132,8 @@ def btn_right_handler(label, layer):
     layer['current'] = layer['files'][indx]
     file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
     anchor='center'
-    if len(file_title) > 20:
-        file_title = file_title[0:20]+'...'
+    if len(file_title) > 18:
+        file_title = file_title[0:18]+'...'
         anchor = 'w'
     label['text'] = file_title
     label['anchor']=anchor
@@ -153,8 +153,8 @@ for layer in layers:
         #Use file title from json file or file name as fallback
         file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
         anchor='center'
-        if len(file_title) > 20:
-            file_title = file_title[0:20]+'...'
+        if len(file_title) > 18:
+            file_title = file_title[0:18]+'...'
             anchor = 'w'
         lbl_filename = tk.Label(master=frame,text=file_title, width=20, font=('system', 12), anchor=anchor)
 
@@ -202,7 +202,7 @@ def save():
     lbl_saved['text'] = 'File saved to ./out/%s.png' % file_index
 
 btn_save = tk.Button(master=window, text="Save" ,command=save)
-btn_save.grid(row=1, column=1, sticky='nwes', pady=(5,10), padx=2)
+btn_save.grid(row=1, column=1, sticky='nwes', pady=(5,10), padx=30)
 
 lbl_saved = tk.Label(master=window)
 lbl_saved.grid(row=1, column=0)
