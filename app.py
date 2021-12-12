@@ -1,11 +1,16 @@
+from io import BytesIO
 import os
 import json
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
+from cairosvg import svg2png
 from widget_vscroll import VerticalScrolledFrame
 
 layers = []
+
+svg_default_width = 500
+svg_default_height = 500
 
 #index.json must contain array of items {folder:'', title:''}
 #All not real paths - ignored, layers without folder - ignored
@@ -79,15 +84,25 @@ def resize_canvas(e=None):
 
 canvas.bind('<Configure>', resize_canvas)
 
+def open_img_file(layer, file):
+    if file.endswith('.svg'):
+        new_bites = svg2png(url=file, unsafe=True, write_to=None, parent_width=svg_default_width, parent_height=svg_default_height)
+        return Image.open(BytesIO(new_bites))
+    return Image.open("./%s/%s" % (layer,file))
+
+
 def update_image(e=None):
     canvas.delete('all')
     #open background (first layer) if exists
     if 'current' in layers[0]:
-        background = Image.open("./%s/%s" % (layers[0]['folder'],layers[0]['current']['file']))
+        #For now background cant be SVG, because we need sizing
+        background = Image.open( "./%s/%s" % (layers[0]['folder'],layers[0]['current']['file']))
+        svg_default_width = background.width
+        svg_default_height = background.height
 
         for layer in layers[1:]:
             if 'current' in layer:
-                img = Image.open("./%s/%s" % (layer['folder'], layer['current']['file']))
+                img = open_img_file(layer['folder'], layer['current']['file'])
                 background.paste(img, (0,0), img)
 
         result = ImageTk.PhotoImage(background)
