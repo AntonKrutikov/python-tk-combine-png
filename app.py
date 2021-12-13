@@ -9,8 +9,8 @@ from widget_vscroll import VerticalScrolledFrame
 
 layers = []
 
-svg_default_width = 500
-svg_default_height = 500
+svg_default_width = 1000
+svg_default_height = 1000
 
 #index.json must contain array of items {folder:'', title:''}
 #All not real paths - ignored, layers without folder - ignored
@@ -86,36 +86,40 @@ canvas.bind('<Configure>', resize_canvas)
 
 def open_img_file(layer, file):
     if file.endswith('.svg'):
-        new_bites = svg2png(url=file, unsafe=True, write_to=None, parent_width=svg_default_width, parent_height=svg_default_height)
+        new_bites = svg2png(file_obj=open(file, "rb"), unsafe=True, write_to=None, parent_width=svg_default_width, parent_height=svg_default_height)
         return Image.open(BytesIO(new_bites))
     return Image.open("./%s/%s" % (layer,file))
 
 
 def update_image(e=None):
+    global svg_default_width
+    global svg_default_height
     canvas.delete('all')
     #open background (first layer) if exists
     if 'current' in layers[0]:
         #For now background cant be SVG, because we need sizing
-        background = Image.open( "./%s/%s" % (layers[0]['folder'],layers[0]['current']['file']))
+        background = Image.open( "./%s/%s" % (layers[0]['folder'],layers[0]['current']['file'])).convert('RGBA')
         svg_default_width = background.width
         svg_default_height = background.height
 
         for layer in layers[1:]:
             if 'current' in layer:
                 img = open_img_file(layer['folder'], layer['current']['file'])
-                background.paste(img, (0,0), img)
+                aimg = Image.new('RGBA', background.size)
+                aimg.paste(img, (0,0))
+                background = Image.alpha_composite(background, aimg)
 
-        result = ImageTk.PhotoImage(background)
+    result = ImageTk.PhotoImage(background)
 
-        canvas.create_image(0, 0, image=result, tag="result")
-        
-        canvas.image=result
-        canvas.pil_image = background
+    canvas.create_image(0, 0, image=result, tag="result")
+    
+    canvas.image=result
+    canvas.pil_image = background
 
-        resize_canvas()
-        canvas.configure(scrollregion=[-background.width/2,-background.height/2,background.width/2, background.height/2])
-        canvas.yview_moveto('0')
-        canvas.xview_moveto('0')
+    resize_canvas()
+    canvas.configure(scrollregion=[-background.width/2,-background.height/2,background.width/2, background.height/2])
+    canvas.yview_moveto('0')
+    canvas.xview_moveto('0')
 
 
 update_image()

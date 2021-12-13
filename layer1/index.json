@@ -1,5 +1,7 @@
 [
     {"file":"1-1-a.png", "title": "First file"},
+    {"file":"super_white.png", "title": "First file"},
+    {"file":"v2.jpeg", "title": "MASK First file"},
     {"file":"1-2-b.png", "title": "Second file"},
     {"file":"9.png", "title": "Third fileThird fileThird fileThird fileThird fileThird file"}
 ]

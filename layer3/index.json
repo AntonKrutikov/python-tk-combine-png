@@ -1,5 +1,7 @@
 [
     {"file":"3-1-a.png", "title": "First file"},
     {"file":"3-2-b.png", "title": "Second file"},
-    {"file":"3-3-c.png", "title": "Third file"}
+    {"file":"3-3-c.png", "title": "Third file"},
+    {"file":"888.png", "title": "PNG Glasses"},
+    {"file":"test.svg", "title": "SVG file"}
 ]
