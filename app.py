@@ -85,10 +85,11 @@ def resize_canvas(e=None):
 canvas.bind('<Configure>', resize_canvas)
 
 def open_img_file(layer, file):
+    fullpath = "./%s/%s" % (layer,file)
     if file.endswith('.svg'):
-        new_bites = svg2png(file_obj=open(file, "rb"), unsafe=True, write_to=None, parent_width=svg_default_width, parent_height=svg_default_height)
+        new_bites = svg2png(file_obj=open(fullpath, "rb"), unsafe=True, write_to=None, parent_width=svg_default_width, parent_height=svg_default_height)
         return Image.open(BytesIO(new_bites))
-    return Image.open("./%s/%s" % (layer,file))
+    return Image.open(fullpath)
 
 
 def update_image(e=None):
