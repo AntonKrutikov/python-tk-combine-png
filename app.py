@@ -6,49 +6,95 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 from cairosvg import svg2png
 from widget_vscroll import VerticalScrolledFrame
+import argparse
+
+description="""NFT manual generator
+
+Compare your png or svg images to resulting NFT
+"""
+parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument('--svg-width', help='Default svg width when convert to png, if svg used as background layer', default=1080, type=int)
+parser.add_argument('--svg-height', help='Default svg height when convert to png, if svg used as background layer', default=1080, type=int)
+parser.add_argument('--blueprint', help='JSON template for generating output json file', default='blueprint.json')
+args = parser.parse_args()
 
 layers = []
 
-svg_default_width = 1000
-svg_default_height = 1000
+svg_default_width = args.svg_width
+svg_default_height = args.svg_height
 
-#index.json must contain array of items {folder:'', title:''}
-#All not real paths - ignored, layers without folder - ignored
-with open('index.json') as json_file:
+#traits.json
+def is_real_file(file):
+    if os.path.isfile(file):
+        return True
+    else:
+        print("Warning: file %s is not a real path (this trait skipped)" % file)
+        return False
+
+traits_file = 'traits.json'
+with open('traits.json') as json_file:
     try:
         parsed = json.load(json_file)
-        if isinstance(parsed, list): #we want array from json file
-            for i in parsed:
-                if isinstance(i, dict) and 'folder' in i: #item must have 'folder' field
-                    if os.path.isdir(i['folder']): #check path is real, if not - warning and ignore
-                        layers.append(i)
-                    else:
-                        print("Warning in index.json file: [%s] is not a real path" % i['folder'])
-    except:
-        print('Error in parsing layers from index.json') #TODO: differen exception handling
+        for layer_name,traits in parsed.items():
+            layer = {"group": layer_name, "traits": []}
+            for trait_name, trait in traits.items():
+                file = trait['file']
+                paths = []
+                #single file as string
+                if isinstance(file, str) and is_real_file(file) == True: 
+                    paths.append({'title': trait_name, 'file': [file]})
+                #more then 1 file in array style of strings
+                elif isinstance(file, list) and all(isinstance(f, str) and is_real_file(f) for f in file): 
+                    paths.append({'title': trait_name, 'file': file})
+                #single file in dict style with path as string without condition
+                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], str) and 'condition' not in file: 
+                    paths.append({'title': trait_name, 'file': [file['path']]})
+                #single file in dict style with path as array of strings without condition
+                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], list) and all(isinstance(f, str) and is_real_file(f) for f in file['path']) and 'condition' not in file:
+                    paths.append({'title': trait_name, 'file': file['path']})
+                #single file in dict style with path as string with condition
+                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],str) and 'condition' in file:
+                    paths.append({'title': trait_name, 'file': [file['path']], 'condition': file['condition']})
+                #single file in dict style with path as array of strings with condition
+                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],list) and 'condition' in file:
+                    paths.append({'title': trait_name, 'file': file['path'], 'condition': file['condition']})
+                elif isinstance(file, list):
+                    has_default = False
+                    for t_file in file:
+                        if isinstance(t_file, str) and is_real_file(t_file):
+                            if has_default == False:
+                                paths.append({'title': trait_name, 'file': [t_file]})
+                                has_default = True
+                            else:
+                                print('Warning: more then 1 default path for trait %s, %s ignored' % (trait_name,t_file))
+                        if isinstance(t_file, list) and all(isinstance(f, str) and is_real_file(f) for f in t_file):
+                            if has_default == False:
+                                paths.append({'title': trait_name, 'file': t_file})
+                                has_default = True
+                            else:
+                                print('Warning: more then 1 default path for trait %s, %s ignored' % (trait_name,str(t_file)))
+                        if isinstance(t_file, dict) and 'path' in t_file:
+                            if isinstance(t_file['path'], str):
+                                if 'condition' in t_file:
+                                    paths.append({'title': trait_name, 'file': [t_file['path']], 'condition':t_file['condition']})
+                                elif has_default == False:
+                                    paths.append({'title': trait_name, 'file': [t_file['path']]})
+                                    has_default = True
+                            elif isinstance(t_file['path'], list):
+                                if 'condition' in t_file:
+                                    paths.append({'title': trait_name, 'file': t_file['path'], 'condition':t_file['condition']})
+                                elif has_default == False:
+                                    paths.append({'title': trait_name, 'file': t_file['path']})
+                                    has_default = True
+                for path in paths:
+                    layer['traits'].append(path)
+                    if 'current' not in layer:
+                        layer['current'] = path
 
-#collect all files info in each layer
-#search for index.json in layer folder
-for layer in layers:
-    path = "./%s/index.json" % layer['folder']
-    if os.path.isfile(path):
-        with open(path) as json_file:
-            try:
-                parsed = json.load(json_file)
-                layer['files'] = []
-                for i in parsed:
-                    if isinstance(i, dict) and 'file' in i: #item must have 'file' field
-                        filepath = "./%s/%s" % (layer['folder'],i['file'])
-                        if os.path.isfile(filepath): #check file exists, if not - warning and ignore
-                            layer['files'].append(i)
-                            if 'current' not in layer:
-                                layer['current'] = i
-                        else:
-                            print("Warning in %s file: [%s] is not a real file" % (path, filepath))
-            except:
-                print('Error in parsing files from index.json in path=%s' % path)
-
-
+            layers.append(layer)
+    except Exception as exception:
+        print('Error in parsing layers from traits file (%s)' % traits_file)
+        print(exception)
 
 window = tk.Tk()
 window.title("Manual NFT Generator")
@@ -84,8 +130,8 @@ def resize_canvas(e=None):
 
 canvas.bind('<Configure>', resize_canvas)
 
-def open_img_file(layer, file):
-    fullpath = "./%s/%s" % (layer,file)
+def open_img_file(file):
+    fullpath = file
     if file.endswith('.svg'):
         new_bites = svg2png(file_obj=open(fullpath, "rb"), unsafe=True, write_to=None, parent_width=svg_default_width, parent_height=svg_default_height)
         return Image.open(BytesIO(new_bites))
@@ -99,16 +145,18 @@ def update_image(e=None):
     #open background (first layer) if exists
     if 'current' in layers[0]:
         #For now background cant be SVG, because we need sizing
-        background = Image.open( "./%s/%s" % (layers[0]['folder'],layers[0]['current']['file'])).convert('RGBA')
+        background = Image.open( layers[0]['current']['file'][0]).convert('RGBA')
         svg_default_width = background.width
         svg_default_height = background.height
 
         for layer in layers[1:]:
             if 'current' in layer:
-                img = open_img_file(layer['folder'], layer['current']['file'])
-                aimg = Image.new('RGBA', background.size)
-                aimg.paste(img, (0,0))
-                background = Image.alpha_composite(background, aimg)
+                files = layer['current']['file']
+                for path in files:
+                    img = open_img_file(path)
+                    aimg = Image.new('RGBA', background.size)
+                    aimg.paste(img, (0,0))
+                    background = Image.alpha_composite(background, aimg)
 
     result = ImageTk.PhotoImage(background)
 
@@ -132,54 +180,73 @@ frame.columnconfigure(1, weight=1)
 
 frame.inner.columnconfigure(1, weight=1)
 
+condition_labels = []
+
+def check_condition(condition):
+    for trait in layers:
+        for c in condition:
+            if c == trait['current']['title']:
+                return True
+    return False
+
+def set_text(current, lbl_file):
+    lbl_file['anchor'] = 'center'
+    title = current['title']
+    if len(title) > 18:
+        title = title[0:18]+'...'
+        lbl_file['anchor'] = 'w'
+    lbl_file['text'] = title
+
+def update_conditional_labels():
+    for condition in condition_labels:
+        if 'condition' in condition['layer']['current']:
+            text = 'conditions\n'
+            for c in condition['layer']['current']['condition']:
+                text += "%s\n" % c
+            condition['label']['text'] = text.rstrip()
+            if check_condition(condition['layer']['current']['condition']):
+                condition['label']['foreground'] = '#2E7D32'
+            else:
+                condition['label']['foreground'] = '#BF360C'
+        else:
+            condition['label']['text'] = ''
+
 
 def btn_left_handler(label, layer):
-    indx = layer['files'].index(layer['current'])
-    layer['current'] = layer['files'][indx-1]
-    file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
-    anchor='center'
-    if len(file_title) > 18:
-        file_title = file_title[0:18]+'...'
-        anchor = 'w'
-    label['text'] = file_title
-    label['anchor']=anchor
+    indx = layer['traits'].index(layer['current'])
+    layer['current'] = layer['traits'][indx-1]
+    set_text(layer['current'], label)
+    update_conditional_labels()
+    frame.inner.update()
     lbl_saved['text'] = ''
     update_image()
 
 def btn_right_handler(label, layer):
-    indx = layer['files'].index(layer['current'])
-    indx = 0 if indx == len(layer['files'])-1 else indx+1
-    layer['current'] = layer['files'][indx]
-    file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
-    anchor='center'
-    if len(file_title) > 18:
-        file_title = file_title[0:18]+'...'
-        anchor = 'w'
-    label['text'] = file_title
-    label['anchor']=anchor
-    label['text'] = file_title
+    indx = layer['traits'].index(layer['current'])
+    indx = 0 if indx == len(layer['traits'])-1 else indx+1
+    layer['current'] = layer['traits'][indx]
+    set_text(layer['current'], label)
+    update_conditional_labels()
+    frame.inner.update()
     lbl_saved['text'] = ''
     update_image()
 
 #draw choosers on right pane
 i=0
+label_width = 20
+
 for layer in layers:
     if 'current' in layer: #show only layers with minimum 1 file exists
         #Use folder title from json file or folder name as fallback
-        layer_title = layer['title'] if 'title' in layer else layer['folder']
-        lbl_layer_title = tk.Label(master=frame, text="%s" % layer_title, width=20, borderwidth = 3, font=('system', 12, 'bold'), anchor='w')
+        layer_title = layer['group']
+        lbl_layer_title = tk.Label(master=frame, text="%s" % layer_title, width=label_width, borderwidth = 3, font=('system', 12, 'bold'), anchor='w')
+
         separator=ttk.Separator(master=frame,orient='horizontal')
 
-        #Use file title from json file or file name as fallback
-        file_title = layer['current']['title'] if 'title' in layer['current'] else layer['current']['file']
-        anchor='center'
-        if len(file_title) > 18:
-            file_title = file_title[0:18]+'...'
-            anchor = 'w'
-        lbl_filename = tk.Label(master=frame,text=file_title, width=20, font=('system', 12), anchor=anchor)
-
-        btn_left = tk.Button(master=frame,text="<", command=lambda arg1=lbl_filename, arg2=layer:btn_left_handler(arg1, arg2), width=1)
-        btn_right = tk.Button(master=frame,text=">", command=lambda arg1=lbl_filename, arg2=layer:btn_right_handler(arg1,arg2), width=1)
+        lbl_filename = tk.Label(master=frame, width=label_width, font=('system', 12))
+        
+        btn_left = tk.Button(master=frame,text="<",  width=1)
+        btn_right = tk.Button(master=frame,text=">", width=1)
 
         lbl_layer_title.grid(row=i, column=0, columnspan=3, sticky="ew")
         i+=1
@@ -189,8 +256,23 @@ for layer in layers:
         btn_right.grid(row=i, column=2, sticky='w', padx=10)
         i+=1
 
+        lbl_conditions = tk.Label(master=frame, width=label_width, font=('system', 12), foreground="#757575")
+        lbl_conditions.grid(row=i, column=1, sticky='we')
+        condition_labels.append({'layer': layer, 'label': lbl_conditions})
+        i+=1
+        
         separator.grid(row=i, column=0, columnspan=3, pady=(10,0), sticky="we")
         i+=1
+
+        btn_left['command'] = lambda arg1=lbl_filename, arg2=layer: btn_left_handler(arg1, arg2)
+        btn_right['command'] = lambda arg1=lbl_filename, arg2=layer: btn_right_handler(arg1,arg2)
+        set_text(layer['current'], lbl_filename)
+        update_conditional_labels()
+
+## load json template
+blueprint = {}
+with open(args.blueprint) as json_file:
+    blueprint = json.load(json_file)
 
 def save():
     results = [f for f in os.listdir("./out") if f.endswith('.png') and not f.endswith('.min.png')]
@@ -216,8 +298,13 @@ def save():
             data = layer.copy()
             data.pop('files', None)
             result_layers.append(data)
+    blueprint['name'] = "%s.png" % file_index
+    blueprint['attributes'] = []
+    for layer in result_layers:
+        blueprint['attributes'].append({"trait_type": layer['group'], "value": layer['current']['title']})
+
     with open('./out/%s.json' % file_index, 'w') as outfile:
-        json.dump(result_layers, outfile)
+        json.dump(blueprint, outfile)
 
     lbl_saved['text'] = 'File saved to ./out/%s.png' % file_index
 
