@@ -3,7 +3,8 @@
         "Head 1": {
             "weight": 1,
             "file": "input/head-1.png",
-            "hidden": true
+            "hidden": true,
+            "excluded": ["Body 2", "Test 7"]
         },
         "Head 2": {
             "weight": 1,
@@ -22,9 +23,10 @@
         "Body 2": {
             "weight": 1,
             "file": {
-                "condition": ["Head 1"],
+                "condition": ["Head 1","Both"],
                 "path":"input/body-red.png"
-            }
+            },
+            "excluded": "Head 3"
         },
         "Body 3": {
             "weight": 1,
@@ -81,9 +83,6 @@
             "weight": 1,
             "file": [
                 {
-                    "condition": [
-                        "Head 2"
-                    ],
                     "path": "input/glasses.svg"
                 }
             ]

@@ -3,10 +3,12 @@ import os
 import json
 import tkinter as tk
 from tkinter import ttk
+from tkinter import font
 from PIL import Image, ImageTk
 from cairosvg import svg2png
 from widget_vscroll import VerticalScrolledFrame
 import argparse
+import traits
 
 description="""NFT manual generator
 
@@ -18,83 +20,11 @@ parser.add_argument('--svg-height', help='Default svg height when convert to png
 parser.add_argument('--blueprint', help='JSON template for generating output json file', default='blueprint.json')
 args = parser.parse_args()
 
-layers = []
-
 svg_default_width = args.svg_width
 svg_default_height = args.svg_height
 
-#traits.json
-def is_real_file(file):
-    if os.path.isfile(file):
-        return True
-    else:
-        print("Warning: file %s is not a real path (this trait skipped)" % file)
-        return False
-
 traits_file = 'traits.json'
-with open('traits.json') as json_file:
-    try:
-        parsed = json.load(json_file)
-        for layer_name,traits in parsed.items():
-            layer = {"group": layer_name, "traits": []}
-            for trait_name, trait in traits.items():
-                file = trait['file']
-                paths = []
-                #single file as string
-                if isinstance(file, str) and is_real_file(file) == True: 
-                    paths.append({'title': trait_name, 'file': [file]})
-                #more then 1 file in array style of strings
-                elif isinstance(file, list) and all(isinstance(f, str) and is_real_file(f) for f in file): 
-                    paths.append({'title': trait_name, 'file': file})
-                #single file in dict style with path as string without condition
-                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], str) and 'condition' not in file: 
-                    paths.append({'title': trait_name, 'file': [file['path']]})
-                #single file in dict style with path as array of strings without condition
-                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], list) and all(isinstance(f, str) and is_real_file(f) for f in file['path']) and 'condition' not in file:
-                    paths.append({'title': trait_name, 'file': file['path']})
-                #single file in dict style with path as string with condition
-                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],str) and 'condition' in file:
-                    paths.append({'title': trait_name, 'file': [file['path']], 'condition': file['condition']})
-                #single file in dict style with path as array of strings with condition
-                elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],list) and 'condition' in file:
-                    paths.append({'title': trait_name, 'file': file['path'], 'condition': file['condition']})
-                elif isinstance(file, list):
-                    has_default = False
-                    for t_file in file:
-                        if isinstance(t_file, str) and is_real_file(t_file):
-                            if has_default == False:
-                                paths.append({'title': trait_name, 'file': [t_file]})
-                                has_default = True
-                            else:
-                                print('Warning: more then 1 default path for trait %s, %s ignored' % (trait_name,t_file))
-                        if isinstance(t_file, list) and all(isinstance(f, str) and is_real_file(f) for f in t_file):
-                            if has_default == False:
-                                paths.append({'title': trait_name, 'file': t_file})
-                                has_default = True
-                            else:
-                                print('Warning: more then 1 default path for trait %s, %s ignored' % (trait_name,str(t_file)))
-                        if isinstance(t_file, dict) and 'path' in t_file:
-                            if isinstance(t_file['path'], str):
-                                if 'condition' in t_file:
-                                    paths.append({'title': trait_name, 'file': [t_file['path']], 'condition':t_file['condition']})
-                                elif has_default == False:
-                                    paths.append({'title': trait_name, 'file': [t_file['path']]})
-                                    has_default = True
-                            elif isinstance(t_file['path'], list):
-                                if 'condition' in t_file:
-                                    paths.append({'title': trait_name, 'file': t_file['path'], 'condition':t_file['condition']})
-                                elif has_default == False:
-                                    paths.append({'title': trait_name, 'file': t_file['path']})
-                                    has_default = True
-                for path in paths:
-                    layer['traits'].append(path)
-                    if 'current' not in layer:
-                        layer['current'] = path
-
-            layers.append(layer)
-    except Exception as exception:
-        print('Error in parsing layers from traits file (%s)' % traits_file)
-        print(exception)
+layers = traits.load(traits_file)
 
 window = tk.Tk()
 window.title("Manual NFT Generator")
@@ -138,7 +68,7 @@ def open_img_file(file):
     return Image.open(fullpath)
 
 
-def update_image(e=None):
+def update_image(canvas):
     global svg_default_width
     global svg_default_height
     canvas.delete('all')
@@ -171,7 +101,7 @@ def update_image(e=None):
     canvas.xview_moveto('0')
 
 
-update_image()
+update_image(canvas)
 
 frame = VerticalScrolledFrame(master=window, highlightthickness=1, borderwidth=1, relief="groove", width=250)
 frame.grid(row=0,column=1, sticky='nwes')
@@ -179,95 +109,6 @@ frame.grid(row=0,column=1, sticky='nwes')
 frame.columnconfigure(1, weight=1)
 
 frame.inner.columnconfigure(1, weight=1)
-
-condition_labels = []
-
-def check_condition(condition):
-    for trait in layers:
-        for c in condition:
-            if c == trait['current']['title']:
-                return True
-    return False
-
-def set_text(current, lbl_file):
-    lbl_file['anchor'] = 'center'
-    title = current['title']
-    if len(title) > 18:
-        title = title[0:18]+'...'
-        lbl_file['anchor'] = 'w'
-    lbl_file['text'] = title
-
-def update_conditional_labels():
-    for condition in condition_labels:
-        if 'condition' in condition['layer']['current']:
-            text = 'conditions\n'
-            for c in condition['layer']['current']['condition']:
-                text += "%s\n" % c
-            condition['label']['text'] = text.rstrip()
-            if check_condition(condition['layer']['current']['condition']):
-                condition['label']['foreground'] = '#2E7D32'
-            else:
-                condition['label']['foreground'] = '#BF360C'
-        else:
-            condition['label']['text'] = ''
-
-
-def btn_left_handler(label, layer):
-    indx = layer['traits'].index(layer['current'])
-    layer['current'] = layer['traits'][indx-1]
-    set_text(layer['current'], label)
-    update_conditional_labels()
-    frame.inner.update()
-    lbl_saved['text'] = ''
-    update_image()
-
-def btn_right_handler(label, layer):
-    indx = layer['traits'].index(layer['current'])
-    indx = 0 if indx == len(layer['traits'])-1 else indx+1
-    layer['current'] = layer['traits'][indx]
-    set_text(layer['current'], label)
-    update_conditional_labels()
-    frame.inner.update()
-    lbl_saved['text'] = ''
-    update_image()
-
-#draw choosers on right pane
-i=0
-label_width = 20
-
-for layer in layers:
-    if 'current' in layer: #show only layers with minimum 1 file exists
-        #Use folder title from json file or folder name as fallback
-        layer_title = layer['group']
-        lbl_layer_title = tk.Label(master=frame, text="%s" % layer_title, width=label_width, borderwidth = 3, font=('system', 12, 'bold'), anchor='w')
-
-        separator=ttk.Separator(master=frame,orient='horizontal')
-
-        lbl_filename = tk.Label(master=frame, width=label_width, font=('system', 12))
-        
-        btn_left = tk.Button(master=frame,text="<",  width=1)
-        btn_right = tk.Button(master=frame,text=">", width=1)
-
-        lbl_layer_title.grid(row=i, column=0, columnspan=3, sticky="ew")
-        i+=1
-
-        btn_left.grid(row=i, column=0, sticky='e', padx=5)
-        lbl_filename.grid(row=i, column=1, sticky='we')
-        btn_right.grid(row=i, column=2, sticky='w', padx=10)
-        i+=1
-
-        lbl_conditions = tk.Label(master=frame, width=label_width, font=('system', 12), foreground="#757575")
-        lbl_conditions.grid(row=i, column=1, sticky='we')
-        condition_labels.append({'layer': layer, 'label': lbl_conditions})
-        i+=1
-        
-        separator.grid(row=i, column=0, columnspan=3, pady=(10,0), sticky="we")
-        i+=1
-
-        btn_left['command'] = lambda arg1=lbl_filename, arg2=layer: btn_left_handler(arg1, arg2)
-        btn_right['command'] = lambda arg1=lbl_filename, arg2=layer: btn_right_handler(arg1,arg2)
-        set_text(layer['current'], lbl_filename)
-        update_conditional_labels()
 
 ## load json template
 blueprint = {}
@@ -310,6 +151,142 @@ def save():
 
 btn_save = tk.Button(master=window, text="Save" ,command=save)
 btn_save.grid(row=1, column=1, sticky='nwes', pady=(5,10), padx=30)
+
+condition_labels = []
+exclude_labels = []
+
+def set_text(current, lbl_file):
+    lbl_file['anchor'] = 'center'
+    title = current['title']
+    if len(title) > 18:
+        title = title[0:18]+'...'
+        lbl_file['anchor'] = 'w'
+    lbl_file['text'] = title
+
+def update_conditional_labels():
+    global layers
+    global condition_labels
+    for condition in condition_labels:
+        frame = condition['frame']
+        group = condition['layer']['current']
+        for child in frame.winfo_children():
+            child.destroy()
+        tk.Frame(frame, height=1, width=1).pack() #hack to resize frame after cleanup
+        if 'condition' in group:
+            label = tk.Label(master=frame, text='adapted to', font=('system italic', 12), foreground="#757575", pady=10)
+            f = font.Font(label, label.cget('font'))
+            f.configure(slant='italic')
+            label['font'] = f
+            label.pack()
+
+            for cond in group['condition']:
+                label = tk.Label(master=frame, text=cond, font=('system', 12), foreground="#757575")
+                if traits.check_condition([cond], layers):
+                    label['foreground'] = '#2E7D32'
+                else:
+                    label['foreground'] = '#757575'
+                label.pack()
+
+def update_excluded_labels():
+    global layers
+    global exclude_labels
+    for exclude in exclude_labels:
+        frame = exclude['frame']
+        group = exclude['layer']['current']
+        for child in frame.winfo_children():
+            child.destroy()
+        tk.Frame(frame, height=1, width=1).pack() #hack to resize frame after cleanup
+        if 'excluded' in group:
+            label = tk.Label(master=frame, text='excluded', font=('system italic', 12), foreground="#757575", pady=10)
+            f = font.Font(label, label.cget('font'))
+            f.configure(slant='italic')
+            label['font'] = f
+            label.pack()
+
+            for cond in group['excluded']:
+                label = tk.Label(master=frame, text=cond, font=('system', 12), foreground="#757575")
+                if traits.check_exclude([cond], layers):
+                    label['foreground'] = '#BF360C'
+                else:
+                    label['foreground'] = '#757575'
+                label.pack()
+
+def update_save_button_state(btn):
+    excluded = False
+    for layer in layers:
+        current = layer['current']
+        if 'excluded' in current and traits.check_exclude(current['excluded'], layers):
+            excluded = True
+    if excluded:
+        btn['state'] = 'disabled'
+    else:
+        btn['state'] = 'normal'
+
+
+def btn_left_handler(label, layer):
+    indx = layer['traits'].index(layer['current'])
+    layer['current'] = layer['traits'][indx-1]
+    set_text(layer['current'], label)
+    update_conditional_labels()
+    update_excluded_labels()
+    update_save_button_state(btn_save)
+    frame.inner.update()
+    lbl_saved['text'] = ''
+    update_image(canvas)
+
+def btn_right_handler(label, layer):
+    indx = layer['traits'].index(layer['current'])
+    indx = 0 if indx == len(layer['traits'])-1 else indx+1
+    layer['current'] = layer['traits'][indx]
+    set_text(layer['current'], label)
+    update_conditional_labels()
+    update_excluded_labels()
+    update_save_button_state(btn_save)
+
+    frame.inner.update()
+    lbl_saved['text'] = ''
+    update_image(canvas)
+
+
+i=0
+label_width = 20
+for layer in layers:
+    if 'current' in layer:
+        
+        lbl_layer_title = tk.Label(master=frame, text="%s" % layer['group'], width=label_width, borderwidth = 3, font=('system', 12, 'bold'), anchor='w')
+        lbl_filename = tk.Label(master=frame, width=label_width, font=('system', 12))
+        frame_conditions = tk.Frame(master=frame)
+        frame_excludes = tk.Frame(master=frame)
+        separator=ttk.Separator(master=frame,orient='horizontal')
+        btn_left = tk.Button(master=frame,text="<",  width=1, command=lambda arg1=lbl_filename, arg2=layer: btn_left_handler(arg1, arg2))
+        btn_right = tk.Button(master=frame,text=">", width=1, command=lambda arg1=lbl_filename, arg2=layer: btn_right_handler(arg1,arg2))
+
+        lbl_layer_title.grid(row=i, column=0, columnspan=3, sticky="ew")
+        i+=1
+
+        btn_left.grid(row=i, column=0, sticky='e', padx=5)
+        lbl_filename.grid(row=i, column=1, sticky='we')
+        btn_right.grid(row=i, column=2, sticky='w', padx=10)
+        i+=1
+
+        frame_conditions.grid(row=i, column=1, sticky='we')
+        condition_labels.append({'layer': layer, 'frame': frame_conditions})
+        i+=1
+        
+        frame_excludes.grid(row=i, column=1, sticky='we')
+        exclude_labels.append({'layer': layer, 'frame': frame_excludes})
+        i+=1
+
+        separator.grid(row=i, column=0, columnspan=3, pady=(10,0), sticky="we")
+        i+=1
+
+        set_text(layer['current'], lbl_filename)
+update_conditional_labels()
+update_excluded_labels()
+
+
+
+update_save_button_state(btn_save)
 
 lbl_saved = tk.Label(master=window)
 lbl_saved.grid(row=1, column=0)
