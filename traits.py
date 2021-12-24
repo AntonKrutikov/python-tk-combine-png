@@ -84,10 +84,10 @@ def load(input_file):
                                         paths.append({'title': trait_name, 'file': t_file['path']})
                                         has_default = True
                     for path in paths:
-                        if 'excluded' in trait and isinstance(trait['excluded'], str):
-                            path['excluded'] = [trait['excluded']]
-                        elif 'excluded' in trait and isinstance(trait['excluded'], list):
-                            path['excluded'] = trait['excluded']
+                        if 'exclude' in trait and isinstance(trait['exclude'], str):
+                            path['exclude'] = [trait['exclude']]
+                        elif 'exclude' in trait and isinstance(trait['exclude'], list):
+                            path['exclude'] = trait['exclude']
                         group['traits'].append(path)
                         if 'current' not in group:
                             group['current'] = path
