@@ -92,6 +92,7 @@ def load(input_file):
                         if 'current' not in group:
                             group['current'] = path
                 groups.append(group)
+            # print(groups)
             return groups
         except Exception as exception:
             print('Error in parsing layers from traits file (%s)' % input_file)
@@ -109,4 +110,10 @@ def check_exclude(exclude, groups):
         for c in exclude:
             if c == trait['current']['title']:
                 return True
+    return False
+
+def check_adapted_exists(current, group, groups):
+    for trait in group['traits']:
+        if trait['title'] == current['title'] and 'adapted-to' in trait and check_condition(trait['adapted-to'], groups) and (not 'adapted-to' in current or current['adapted-to'] != trait['adapted-to']):
+            return True
     return False

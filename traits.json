@@ -2,9 +2,18 @@
     "head": {
         "Head 1": {
             "weight": 1,
-            "file": "input/head-1.png",
+            "file": [
+                "input/head-1.png",
+                {
+                    "path":"input/head-2.png",
+                    "adapted-to": ["Body 1"]
+                }
+            ],
             "hidden": true,
-            "excluded": ["Body 2", "Both"]
+            "excluded": [
+                "Body 2",
+                "Both"
+            ]
         },
         "Head 2": {
             "weight": 1,
@@ -18,21 +27,30 @@
     "body": {
         "Body 1": {
             "weight": 1,
-            "file": ["input/body-1.png"]
+            "file": [
+                "input/body-1.png"
+            ]
         },
         "Body 2": {
             "weight": 1,
-            "file": {
-                "adapted-to": ["Head 1","Both"],
-                "path":"input/body-red.png"
-            },
-            "excluded": "Head 3"
+            "file": [
+                "input/body-1.png",
+                {
+                    "adapted-to": [
+                        "Head 3"
+                    ],
+                    "path": "input/body-red.png"
+                }
+            ],
+            "exclude": ["Head 1", "Head 2"]
         },
         "Body 3": {
             "weight": 1,
             "file": {
-                "adapted-to": ["Head 3"],
-                "path":"input/body-blue.png"
+                "adapted-to": [
+                    "Head 3"
+                ],
+                "path": "input/body-blue.png"
             }
         }
     },
@@ -58,7 +76,8 @@
             "file": [
                 "input/left-hand-1.png",
                 "input/right-hand-1.png"
-            ]
+            ],
+            "exclude": ["Head 1"]
         }
     },
     "foot": {

@@ -154,6 +154,7 @@ btn_save.grid(row=1, column=1, sticky='nwes', pady=(5,10), padx=30)
 
 condition_labels = []
 exclude_labels = []
+adapted_available_labels = []
 
 def set_text(current, lbl_file):
     lbl_file['anchor'] = 'center'
@@ -209,16 +210,32 @@ def update_excluded_labels():
                     label['foreground'] = '#BF360C'
                 label.pack()
 
+def update_adapted_available_labels():
+    global layers
+    for available in adapted_available_labels:
+        group = available['layer']
+        current = group['current']
+        frame = available['frame']
+        for child in frame.winfo_children():
+            child.destroy()
+        tk.Frame(frame, height=1, width=1).pack() #hack to resize frame after cleanup
+        if traits.check_adapted_exists(current, group, layers):
+            label = tk.Label(master=frame, text='adapted exists', font=('system', 12), foreground="#BF360C", pady=10)
+            label.pack()
+
 def update_save_button_state(btn):
     excluded = False
     not_adapted = False
+    adapted_exists = False
     for layer in layers:
         current = layer['current']
         if 'exclude' in current and traits.check_exclude(current['exclude'], layers):
             excluded = True
         if 'adapted-to' in current and not traits.check_condition(current['adapted-to'], layers):
             not_adapted = True
-    if excluded or not_adapted:
+        if traits.check_adapted_exists(current, layer, layers):
+            adapted_exists = True
+    if excluded or not_adapted or adapted_exists:
         btn['state'] = 'disabled'
     else:
         btn['state'] = 'normal'
@@ -230,6 +247,7 @@ def btn_left_handler(label, layer):
     set_text(layer['current'], label)
     update_conditional_labels()
     update_excluded_labels()
+    update_adapted_available_labels()
     update_save_button_state(btn_save)
     frame.inner.update()
     lbl_saved['text'] = ''
@@ -242,6 +260,7 @@ def btn_right_handler(label, layer):
     set_text(layer['current'], label)
     update_conditional_labels()
     update_excluded_labels()
+    update_adapted_available_labels()
     update_save_button_state(btn_save)
 
     frame.inner.update()
@@ -258,6 +277,7 @@ for layer in layers:
         lbl_filename = tk.Label(master=frame, width=label_width, font=('system', 12))
         frame_conditions = tk.Frame(master=frame)
         frame_excludes = tk.Frame(master=frame)
+        frame_adapted_available = tk.Label(master=frame)
         separator=ttk.Separator(master=frame,orient='horizontal')
         btn_left = tk.Button(master=frame,text="<",  width=1, command=lambda arg1=lbl_filename, arg2=layer: btn_left_handler(arg1, arg2))
         btn_right = tk.Button(master=frame,text=">", width=1, command=lambda arg1=lbl_filename, arg2=layer: btn_right_handler(arg1,arg2))
@@ -268,6 +288,10 @@ for layer in layers:
         btn_left.grid(row=i, column=0, sticky='e', padx=5)
         lbl_filename.grid(row=i, column=1, sticky='we')
         btn_right.grid(row=i, column=2, sticky='w', padx=10)
+        i+=1
+
+        frame_adapted_available.grid(row=i, column=1, sticky='we')
+        adapted_available_labels.append({'layer': layer, 'frame': frame_adapted_available})
         i+=1
 
         frame_conditions.grid(row=i, column=1, sticky='we')
@@ -284,6 +308,7 @@ for layer in layers:
         set_text(layer['current'], lbl_filename)
 update_conditional_labels()
 update_excluded_labels()
+update_adapted_available_labels()
 
 
 
