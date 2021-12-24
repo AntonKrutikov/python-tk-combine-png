@@ -184,7 +184,7 @@ def update_conditional_labels():
                 if traits.check_condition([cond], layers):
                     label['foreground'] = '#2E7D32'
                 else:
-                    label['foreground'] = '#757575'
+                    label['foreground'] = '#BF360C'
                 label.pack()
 
 def update_excluded_labels():
@@ -213,11 +213,14 @@ def update_excluded_labels():
 
 def update_save_button_state(btn):
     excluded = False
+    not_adapted = False
     for layer in layers:
         current = layer['current']
         if 'excluded' in current and traits.check_exclude(current['excluded'], layers):
             excluded = True
-    if excluded:
+        if 'condition' in current and not traits.check_condition(current['condition'], layers):
+            not_adapted = True
+    if excluded or not_adapted:
         btn['state'] = 'disabled'
     else:
         btn['state'] = 'normal'
