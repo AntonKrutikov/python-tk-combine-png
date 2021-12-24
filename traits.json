@@ -4,7 +4,7 @@
             "weight": 1,
             "file": "input/head-1.png",
             "hidden": true,
-            "excluded": ["Body 2", "Test 7"]
+            "excluded": ["Body 2", "Both"]
         },
         "Head 2": {
             "weight": 1,

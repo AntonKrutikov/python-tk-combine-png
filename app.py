@@ -196,7 +196,7 @@ def update_excluded_labels():
         for child in frame.winfo_children():
             child.destroy()
         tk.Frame(frame, height=1, width=1).pack() #hack to resize frame after cleanup
-        if 'excluded' in group:
+        if 'excluded' in group and traits.check_exclude(group['excluded'], layers):
             label = tk.Label(master=frame, text='excluded', font=('system italic', 12), foreground="#757575", pady=10)
             f = font.Font(label, label.cget('font'))
             f.configure(slant='italic')
@@ -204,11 +204,9 @@ def update_excluded_labels():
             label.pack()
 
             for cond in group['excluded']:
-                label = tk.Label(master=frame, text=cond, font=('system', 12), foreground="#757575")
                 if traits.check_exclude([cond], layers):
+                    label = tk.Label(master=frame, text=cond, font=('system', 12), foreground="#757575")
                     label['foreground'] = '#BF360C'
-                else:
-                    label['foreground'] = '#757575'
                 label.pack()
 
 def update_save_button_state(btn):
