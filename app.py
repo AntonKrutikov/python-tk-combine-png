@@ -182,7 +182,7 @@ def update_conditional_labels():
 
             for cond in group['adapted-to']:
                 label = tk.Label(master=frame, text=cond, font=('system', 12), foreground="#757575")
-                if traits.check_condition([cond], layers):
+                if traits.check_condition([cond], layers) == True:
                     label['foreground'] = '#2E7D32'
                 else:
                     label['foreground'] = '#BF360C'
@@ -219,9 +219,14 @@ def update_adapted_available_labels():
         for child in frame.winfo_children():
             child.destroy()
         tk.Frame(frame, height=1, width=1).pack() #hack to resize frame after cleanup
-        if traits.check_adapted_exists(current, group, layers):
-            label = tk.Label(master=frame, text='adapted exists', font=('system', 12), foreground="#BF360C", pady=10)
+        ok, cond = traits.check_adapted_exists(current, group, layers)
+        if ok == True:
+            label = tk.Label(master=frame, text='mod available for', font=('system', 12), foreground="#BF360C", pady=10)
             label.pack()
+            for c in cond:
+                label_cond = tk.Label(master=frame, text=c, font=('system', 12), foreground="#757575")
+                label_cond.pack() 
+
 
 def update_save_button_state(btn):
     excluded = False

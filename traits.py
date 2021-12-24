@@ -103,7 +103,7 @@ def check_condition(condition, groups):
         for c in condition:
             if c == trait['current']['title']:
                 return True
-    return False
+    return False, None
 
 def check_exclude(exclude, groups):
     for trait in groups:
@@ -114,6 +114,15 @@ def check_exclude(exclude, groups):
 
 def check_adapted_exists(current, group, groups):
     for trait in group['traits']:
-        if trait['title'] == current['title'] and 'adapted-to' in trait and check_condition(trait['adapted-to'], groups) and (not 'adapted-to' in current or current['adapted-to'] != trait['adapted-to']):
-            return True
-    return False
+        if 'adapted-to' in trait:
+            adapted = trait['adapted-to'].copy()
+            matched = False
+            if trait['title'] == current['title'] and (not 'adapted-to' in current or current['adapted-to'] != trait['adapted-to']):
+                for a in trait['adapted-to']:
+                    ok = check_condition([a], groups)
+                    if ok == True:
+                        matched = True
+                    else:
+                        adapted.remove(a)
+                return matched, adapted
+    return False, None
