@@ -92,7 +92,6 @@ def load(input_file):
                         if 'current' not in group:
                             group['current'] = path
                 groups.append(group)
-            print(groups)
             return groups
         except Exception as exception:
             print('Error in parsing layers from traits file (%s)' % input_file)
