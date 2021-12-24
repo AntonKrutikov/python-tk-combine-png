@@ -23,7 +23,7 @@
         "Body 2": {
             "weight": 1,
             "file": {
-                "condition": ["Head 1","Both"],
+                "adapted-to": ["Head 1","Both"],
                 "path":"input/body-red.png"
             },
             "excluded": "Head 3"
@@ -31,7 +31,7 @@
         "Body 3": {
             "weight": 1,
             "file": {
-                "condition": ["Head 3"],
+                "adapted-to": ["Head 3"],
                 "path":"input/body-blue.png"
             }
         }
@@ -46,7 +46,7 @@
             "file": [
                 "input/right-hand-1.png",
                 {
-                    "condition": [
+                    "adapted-to": [
                         "Head 2"
                     ],
                     "path": "input/right-hand-1-red.png"

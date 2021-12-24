@@ -44,17 +44,17 @@ def load(input_file):
                     elif isinstance(file, list) and all(isinstance(f, str) and is_real_file(f) for f in file): 
                         paths.append({'title': trait_name, 'file': file})
                     #single file in dict style with path as string without condition
-                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], str) and 'condition' not in file: 
+                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], str) and 'adapted-to' not in file: 
                         paths.append({'title': trait_name, 'file': [file['path']]})
                     #single file in dict style with path as array of strings without condition
-                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], list) and all(isinstance(f, str) and is_real_file(f) for f in file['path']) and 'condition' not in file:
+                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'], list) and all(isinstance(f, str) and is_real_file(f) for f in file['path']) and 'adapted-to' not in file:
                         paths.append({'title': trait_name, 'file': file['path']})
                     #single file in dict style with path as string with condition
-                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],str) and 'condition' in file:
-                        paths.append({'title': trait_name, 'file': [file['path']], 'condition': file['condition']})
+                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],str) and 'adapted-to' in file:
+                        paths.append({'title': trait_name, 'file': [file['path']], 'adapted-to': file['adapted-to']})
                     #single file in dict style with path as array of strings with condition
-                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],list) and 'condition' in file:
-                        paths.append({'title': trait_name, 'file': file['path'], 'condition': file['condition']})
+                    elif isinstance(file, dict) and 'path' in file and isinstance(file['path'],list) and 'adapted-to' in file:
+                        paths.append({'title': trait_name, 'file': file['path'], 'adapted-to': file['adapted-to']})
                     elif isinstance(file, list):
                         has_default = False
                         for t_file in file:
@@ -72,14 +72,14 @@ def load(input_file):
                                     print('Warning: more then 1 default path for trait %s, %s ignored' % (trait_name,str(t_file)))
                             if isinstance(t_file, dict) and 'path' in t_file:
                                 if isinstance(t_file['path'], str):
-                                    if 'condition' in t_file:
-                                        paths.append({'title': trait_name, 'file': [t_file['path']], 'condition':t_file['condition']})
+                                    if 'adapted-to' in t_file:
+                                        paths.append({'title': trait_name, 'file': [t_file['path']], 'adapted-to':t_file['adapted-to']})
                                     elif has_default == False:
                                         paths.append({'title': trait_name, 'file': [t_file['path']]})
                                         has_default = True
                                 elif isinstance(t_file['path'], list):
-                                    if 'condition' in t_file:
-                                        paths.append({'title': trait_name, 'file': t_file['path'], 'condition':t_file['condition']})
+                                    if 'adapted-to' in t_file:
+                                        paths.append({'title': trait_name, 'file': t_file['path'], 'adapted-to':t_file['adapted-to']})
                                     elif has_default == False:
                                         paths.append({'title': trait_name, 'file': t_file['path']})
                                         has_default = True

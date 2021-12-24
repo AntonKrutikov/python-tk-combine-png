@@ -172,14 +172,14 @@ def update_conditional_labels():
         for child in frame.winfo_children():
             child.destroy()
         tk.Frame(frame, height=1, width=1).pack() #hack to resize frame after cleanup
-        if 'condition' in group:
+        if 'adapted-to' in group:
             label = tk.Label(master=frame, text='adapted to', font=('system italic', 12), foreground="#757575", pady=10)
             f = font.Font(label, label.cget('font'))
             f.configure(slant='italic')
             label['font'] = f
             label.pack()
 
-            for cond in group['condition']:
+            for cond in group['adapted-to']:
                 label = tk.Label(master=frame, text=cond, font=('system', 12), foreground="#757575")
                 if traits.check_condition([cond], layers):
                     label['foreground'] = '#2E7D32'
@@ -216,7 +216,7 @@ def update_save_button_state(btn):
         current = layer['current']
         if 'excluded' in current and traits.check_exclude(current['excluded'], layers):
             excluded = True
-        if 'condition' in current and not traits.check_condition(current['condition'], layers):
+        if 'adapted-to' in current and not traits.check_condition(current['adapted-to'], layers):
             not_adapted = True
     if excluded or not_adapted:
         btn['state'] = 'disabled'
