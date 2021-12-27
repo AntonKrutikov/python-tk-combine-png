@@ -104,14 +104,14 @@ def load(input_file):
 def check_condition(condition, groups):
     for trait in groups:
         for c in condition:
-            if c == trait['current']['title']:
+            if 'current' in trait and c == trait['current']['title']:
                 return True
     return False, None
 
 def check_exclude(exclude, groups):
     for trait in groups:
         for c in exclude:
-            if c == trait['current']['title']:
+            if 'current' in trait and c == trait['current']['title']:
                 return True
     return False
 
