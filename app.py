@@ -238,9 +238,9 @@ def update_save_button_state(btn):
             excluded = True
         if 'adapted-to' in current and not traits.check_condition(current['adapted-to'], layers):
             not_adapted = True
-        ok, adapted = traits.check_adapted_exists(current, layer, layers)
-        if ok:
-            adapted_exists = True
+        # ok, adapted = traits.check_adapted_exists(current, layer, layers)
+        # if ok:
+        #     adapted_exists = True
     if excluded or not_adapted or adapted_exists:
         btn['state'] = 'disabled'
     else:

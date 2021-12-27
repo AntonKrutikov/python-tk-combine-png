@@ -1,5 +1,6 @@
 import os
 import json
+import healthcheck
 
 def is_real_file(file):
     if os.path.isfile(file):
@@ -92,7 +93,9 @@ def load(input_file):
                         if 'current' not in group:
                             group['current'] = path
                 groups.append(group)
-            # print(groups)
+            healthcheck.same_trait_name(groups)
+            healthcheck.adapted_for_unknown(groups)
+            healthcheck.excluded_for_unknown(groups)
             return groups
         except Exception as exception:
             print('Error in parsing layers from traits file (%s)' % input_file)
@@ -113,10 +116,11 @@ def check_exclude(exclude, groups):
     return False
 
 def check_adapted_exists(current, group, groups):
+    matched = False
+
     for trait in group['traits']:
         if 'adapted-to' in trait:
             adapted = trait['adapted-to'].copy()
-            matched = False
             if trait['title'] == current['title'] and (not 'adapted-to' in current or current['adapted-to'] != trait['adapted-to']):
                 for a in trait['adapted-to']:
                     ok = check_condition([a], groups)
@@ -124,5 +128,6 @@ def check_adapted_exists(current, group, groups):
                         matched = True
                     else:
                         adapted.remove(a)
-                return matched, adapted
+        if matched == True:
+            return matched, adapted
     return False, None

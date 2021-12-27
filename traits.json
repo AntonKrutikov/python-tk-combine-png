@@ -6,18 +6,16 @@
                 "input/head-1.png",
                 {
                     "path":"input/head-2.png",
-                    "adapted-to": ["Body 1", "Left"]
+                    "adapted-to": ["Bod7y 1", "Left"]
                 }
             ],
-            "hidden": true,
-            "excluded": [
-                "Body 2",
-                "Both"
-            ]
+            "exclude": ["not_existed 99", "y878s7shhj"],
+            "hidden": true
         },
         "Head 2": {
             "weight": 1,
-            "file": "input/head-2.png"
+            "file": "input/head-2.png",
+            "exclude": ["456"]
         },
         "Head 3": {
             "weight": 1,
@@ -41,8 +39,13 @@
                     ],
                     "path": "input/body-red.png"
                 }
-            ],
-            "exclude": ["Head 1", "Head 2"]
+                ,                {
+                    "adapted-to": [
+                        "Head 2"
+                    ],
+                    "path": "input/body-blue.png"
+                }
+            ]
         },
         "Body 3": {
             "weight": 1,
