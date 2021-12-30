@@ -106,7 +106,7 @@ def check_condition(condition, groups):
         for c in condition:
             if 'current' in trait and c == trait['current']['title']:
                 return True
-    return False, None
+    return False
 
 def check_exclude(exclude, groups):
     for trait in groups:
