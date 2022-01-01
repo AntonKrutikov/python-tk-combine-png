@@ -2,7 +2,7 @@ from io import BytesIO
 import os
 import json
 import tkinter as tk
-from tkinter import BooleanVar, ttk
+from tkinter import ttk
 from tkinter import font
 from tkinter.constants import LEFT
 from PIL import Image, ImageTk
@@ -10,6 +10,8 @@ from cairosvg import svg2png
 from widget_vscroll import VerticalScrolledFrame
 import argparse
 import traits
+import widget_viewer
+from window_result import ResultViewWindow
 
 description="""NFT manual generator
 
@@ -19,7 +21,32 @@ parser = argparse.ArgumentParser(description=description, formatter_class=argpar
 parser.add_argument('--svg-width', help='Default svg width when convert to png, if svg used as background layer', default=1080, type=int)
 parser.add_argument('--svg-height', help='Default svg height when convert to png, if svg used as background layer', default=1080, type=int)
 parser.add_argument('--blueprint', help='JSON template for generating output json file', default='blueprint.json')
+parser.add_argument('--viewer', help='Starts in viewer mode', nargs='?', const=-1, default=None)
 args = parser.parse_args()
+
+result_viewer_instance = False
+result_viewer = None
+def show_result_viewer():
+    global result_viewer_instance
+    global result_viewer
+    if not result_viewer_instance:
+        result_viewer = ResultViewWindow()
+        result_viewer_instance = True
+        def on_close():
+            global result_viewer_instance
+            result_viewer_instance = False
+            result_viewer.destroy()
+        
+        result_viewer.protocol("WM_DELETE_WINDOW", on_close)
+        result_viewer.load_file_list()
+        result_viewer.show_item_by_name(args.viewer)
+        return result_viewer
+
+# viewer mode
+if args.viewer != None:
+    show_result_viewer().mainloop()
+    exit()
+# viewer mode end
 
 svg_default_width = args.svg_width
 svg_default_height = args.svg_height
@@ -29,70 +56,9 @@ layers = traits.load(traits_file)
 
 window = tk.Tk()
 window.title("Manual NFT Generator")
-
-frame_canvas = tk.Frame(highlightthickness=1, borderwidth=2, relief="groove")
-frame_canvas.grid(row=0, column=0, sticky='nwse')
-
-frame_canvas.columnconfigure(0, weight=1)
-frame_canvas.rowconfigure(2, weight=1)
-
-
-canvas = tk.Canvas(frame_canvas)
-canvas.grid(row=2, column=0, sticky='nwse')
-
-scroll_x = tk.Scrollbar(frame_canvas, orient="horizontal", command=canvas.xview)
-# scroll_x.grid(row=3, column=0, sticky="ew")
-
-scroll_y = tk.Scrollbar(frame_canvas, orient="vertical", command=canvas.yview)
-# scroll_y.grid(row=2, column=1, sticky="ns")
-
-canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
-
-canvas_fit = tk.BooleanVar()
-canvas_fit.set(True)
-
-def checkbox_fit_command():
-    resize_canvas()
-checkbox_fit = tk.Checkbutton(frame_canvas, text='Fit image', onvalue=True, offvalue=False, var=canvas_fit, command=checkbox_fit_command)
-checkbox_fit.grid(row=0, column=0, sticky='nw')
-
-ttk.Separator(frame_canvas,orient='horizontal').grid(row=1,column=0, sticky='ew', columnspan=2)
-
-# canvas_fit = True
-
-#Method to resize and center image inside canvas when parent container resized
-def resize_canvas(e=None):
-    img_width = canvas.pil_image.width
-    img_height = canvas.pil_image.height
-    canvas_width = canvas.winfo_width()
-    canvas_height = canvas.winfo_height()
-    if canvas_fit.get() == True:
-        if img_width > canvas_width or img_height > canvas_height:
-            ratio = 1
-            if img_width > img_height and canvas_width > 1:
-                ratio = canvas_width / img_width
-            elif canvas_height > 1:
-                ratio = canvas_height / img_height
-            resized = ImageTk.PhotoImage(canvas.pil_image.resize((int(img_width * ratio),int(img_height*ratio))))
-            canvas.itemconfigure("result", image=resized)
-            canvas.fit_image = resized
-            img_height = canvas_height
-            img_width = canvas_width
-            scroll_x.grid_remove()
-            scroll_y.grid_remove()
-    else:
-        canvas.itemconfigure("result", image=canvas.image)
-        scroll_x.grid(row=3, column=0, sticky="ew")
-        scroll_y.grid(row=2, column=1, sticky="ns")
-    if img_width <= canvas_width:
-        canvas.coords('result', (canvas_width - img_width) / 2, canvas.coords('result')[1])
-    if img_height <= canvas_height:
-        canvas.coords('result', canvas.coords('result')[0], (canvas_height - img_height)/2)
-    canvas.configure(scrollregion=[-img_width/2,-img_height/2,img_width/2, img_height/2])
-    canvas.yview_moveto('0')
-    canvas.xview_moveto('0')
-
-canvas.bind('<Configure>', resize_canvas)
+window.minsize(900,600)
+window.columnconfigure(0, weight=1)
+window.rowconfigure(0, weight=1)
 
 def open_img_file(file):
     fullpath = file
@@ -101,11 +67,9 @@ def open_img_file(file):
         return Image.open(BytesIO(new_bites))
     return Image.open(fullpath)
 
-
-def update_image(canvas: tk.Canvas):
+def update_image(viewer: widget_viewer.Viewer):
     global svg_default_width
     global svg_default_height
-    canvas.delete('all')
     #open background (first layer) if exists
     if 'current' in layers[0]:
         #For now background cant be SVG, because we need sizing
@@ -122,23 +86,21 @@ def update_image(canvas: tk.Canvas):
                     aimg.paste(img, (0,0))
                     background = Image.alpha_composite(background, aimg)
 
-    result = ImageTk.PhotoImage(background)
-
-    canvas.create_image(0, 0, image=result, tag="result")
-    
-    canvas.image=result
-    canvas.pil_image = background
-    resize_canvas()
+    viewer.set_image(background)
 
 
-update_image(canvas)
+
+viewer = widget_viewer.Viewer(master=window, highlightthickness=1, borderwidth=1, relief="groove")
+viewer.grid(row=0, column=0, sticky='nwse')
+update_image(viewer)
 
 frame = VerticalScrolledFrame(master=window, highlightthickness=1, borderwidth=1, relief="groove", width=250)
 frame.grid(row=0,column=1, sticky='nwes')
-
 frame.columnconfigure(1, weight=1)
-
 frame.inner.columnconfigure(1, weight=1)
+
+view_results_button = tk.Button(text="results", command=lambda: show_result_viewer())
+view_results_button.grid(column=0, row=1, sticky='w')
 
 ## load json template
 blueprint = {}
@@ -158,7 +120,7 @@ def save():
             print("Warning: Filenames in output folders must by valid numbers (%s)" % file)
             continue
     file_index+=1
-    img = canvas.pil_image
+    img = viewer.source_image
     img.save('./out/%s.png' % file_index)
     optimized = img.convert('P')
     optimized.save('./out/%s.min.png' % file_index)
@@ -288,7 +250,7 @@ def btn_left_handler(label, layer):
     update_save_button_state(btn_save)
     frame.inner.update()
     lbl_saved['text'] = ''
-    update_image(canvas)
+    update_image(viewer)
 
 def btn_right_handler(label, layer):
     indx = layer['traits'].index(layer['current'])
@@ -302,7 +264,7 @@ def btn_right_handler(label, layer):
 
     frame.inner.update()
     lbl_saved['text'] = ''
-    update_image(canvas)
+    update_image(viewer)
 
 
 i=0
@@ -354,8 +316,6 @@ update_save_button_state(btn_save)
 lbl_saved = tk.Label(master=window)
 lbl_saved.grid(row=1, column=0)
 
-window.minsize(900,600)
-window.columnconfigure(0, weight=1)
-window.rowconfigure(0, weight=1)
+
 
 window.mainloop()
