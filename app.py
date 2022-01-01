@@ -2,8 +2,9 @@ from io import BytesIO
 import os
 import json
 import tkinter as tk
-from tkinter import ttk
+from tkinter import BooleanVar, ttk
 from tkinter import font
+from tkinter.constants import LEFT
 from PIL import Image, ImageTk
 from cairosvg import svg2png
 from widget_vscroll import VerticalScrolledFrame
@@ -33,19 +34,31 @@ frame_canvas = tk.Frame(highlightthickness=1, borderwidth=2, relief="groove")
 frame_canvas.grid(row=0, column=0, sticky='nwse')
 
 frame_canvas.columnconfigure(0, weight=1)
-frame_canvas.rowconfigure(0, weight=1)
+frame_canvas.rowconfigure(2, weight=1)
 
 
 canvas = tk.Canvas(frame_canvas)
-canvas.grid(row=0, column=0, sticky='nwse')
+canvas.grid(row=2, column=0, sticky='nwse')
 
 scroll_x = tk.Scrollbar(frame_canvas, orient="horizontal", command=canvas.xview)
-scroll_x.grid(row=1, column=0, sticky="ew")
+# scroll_x.grid(row=3, column=0, sticky="ew")
 
 scroll_y = tk.Scrollbar(frame_canvas, orient="vertical", command=canvas.yview)
-scroll_y.grid(row=0, column=1, sticky="ns")
+# scroll_y.grid(row=2, column=1, sticky="ns")
 
 canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+
+canvas_fit = tk.BooleanVar()
+canvas_fit.set(True)
+
+def checkbox_fit_command():
+    resize_canvas()
+checkbox_fit = tk.Checkbutton(frame_canvas, text='Fit image', onvalue=True, offvalue=False, var=canvas_fit, command=checkbox_fit_command)
+checkbox_fit.grid(row=0, column=0, sticky='nw')
+
+ttk.Separator(frame_canvas,orient='horizontal').grid(row=1,column=0, sticky='ew', columnspan=2)
+
+# canvas_fit = True
 
 #Method to resize and center image inside canvas when parent container resized
 def resize_canvas(e=None):
@@ -53,10 +66,31 @@ def resize_canvas(e=None):
     img_height = canvas.pil_image.height
     canvas_width = canvas.winfo_width()
     canvas_height = canvas.winfo_height()
-    if img_width < canvas_width:
+    if canvas_fit.get() == True:
+        if img_width > canvas_width or img_height > canvas_height:
+            ratio = 1
+            if img_width > img_height and canvas_width > 1:
+                ratio = canvas_width / img_width
+            elif canvas_height > 1:
+                ratio = canvas_height / img_height
+            resized = ImageTk.PhotoImage(canvas.pil_image.resize((int(img_width * ratio),int(img_height*ratio))))
+            canvas.itemconfigure("result", image=resized)
+            canvas.fit_image = resized
+            img_height = canvas_height
+            img_width = canvas_width
+            scroll_x.grid_remove()
+            scroll_y.grid_remove()
+    else:
+        canvas.itemconfigure("result", image=canvas.image)
+        scroll_x.grid(row=3, column=0, sticky="ew")
+        scroll_y.grid(row=2, column=1, sticky="ns")
+    if img_width <= canvas_width:
         canvas.coords('result', (canvas_width - img_width) / 2, canvas.coords('result')[1])
-    if img_height < canvas_height:
+    if img_height <= canvas_height:
         canvas.coords('result', canvas.coords('result')[0], (canvas_height - img_height)/2)
+    canvas.configure(scrollregion=[-img_width/2,-img_height/2,img_width/2, img_height/2])
+    canvas.yview_moveto('0')
+    canvas.xview_moveto('0')
 
 canvas.bind('<Configure>', resize_canvas)
 
@@ -68,7 +102,7 @@ def open_img_file(file):
     return Image.open(fullpath)
 
 
-def update_image(canvas):
+def update_image(canvas: tk.Canvas):
     global svg_default_width
     global svg_default_height
     canvas.delete('all')
@@ -94,11 +128,7 @@ def update_image(canvas):
     
     canvas.image=result
     canvas.pil_image = background
-
     resize_canvas()
-    canvas.configure(scrollregion=[-background.width/2,-background.height/2,background.width/2, background.height/2])
-    canvas.yview_moveto('0')
-    canvas.xview_moveto('0')
 
 
 update_image(canvas)
