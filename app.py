@@ -99,8 +99,8 @@ frame.grid(row=0,column=1, sticky='nwes')
 frame.columnconfigure(1, weight=1)
 frame.inner.columnconfigure(1, weight=1)
 
-view_results_button = tk.Button(text="results", command=lambda: show_result_viewer())
-view_results_button.grid(column=0, row=1, sticky='w')
+view_results_button = tk.Button(text="NFT Viewer", command=lambda: show_result_viewer())
+view_results_button.grid(column=0, row=1, sticky='w', padx=10)
 
 ## load json template
 blueprint = {}

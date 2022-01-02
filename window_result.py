@@ -18,7 +18,7 @@ class ResultViewWindow(tk.Tk):
 
         self.load_file_list()
 
-        self.title("NFT viewer")
+        self.title("NFT Viewer")
         self.minsize(900,600)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
@@ -75,12 +75,12 @@ class ResultViewWindow(tk.Tk):
         with open(json_file) as f:
             info = json.load(f)
             if 'name' in info:
-                png_path = "%s/%s" % (default_out_path, info['name'])
+                png_path = "%s.png" % json_file.rsplit('.', 1)[0]
                 if os.path.isfile(png_path):
                     img = Image.open(png_path)
                     self.nft_viewer.set_image(img)
             if 'attributes' in info:
-                self.load_item_attributes(info)
+                self.load_item_attributes(info, png_path)
 
     def has_next_item(self):
         indx = self.current_file_indx + 1
@@ -111,14 +111,18 @@ class ResultViewWindow(tk.Tk):
         self.has_prev_item()
         self.has_next_item()
 
-    def load_item_attributes(self, json_file):  
+    def load_item_attributes(self, info, filename):  
         for widget in self.nft_info.inner.winfo_children():
             widget.destroy()
-        label = tk.Label(self.nft_info, text=json_file['name'], anchor='center', font=('system', 12, 'bold'))
+        # Name
+        label = tk.Label(self.nft_info, text=info['name'], anchor='center', font=('system', 12, 'bold'))
         label.grid(column=0, row=0, sticky='ew', columnspan=2, pady=(0,10))
-        if 'attributes' in json_file and isinstance(json_file['attributes'], list):
-            row = 1
-            for a in json_file['attributes']:
+        # filename
+        label = tk.Label(self.nft_info, text='(%s)' % filename, anchor='center', font=('system', 12, 'bold'))
+        label.grid(column=0, row=1, sticky='ew', columnspan=2, pady=(0,10))
+        if 'attributes' in info and isinstance(info['attributes'], list):
+            row = 2
+            for a in info['attributes']:
                 label = tk.Label(self.nft_info, text=a['trait_type'], anchor='w', font=('system', 12, 'bold'))
                 label.grid(column=0, row=row, sticky='ew')
                 label = tk.Label(self.nft_info, text=a['value'], anchor='w', font=('system', 12))
