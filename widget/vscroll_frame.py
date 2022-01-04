@@ -21,8 +21,7 @@ class VerticalScrolledFrame:
         self.vsb['command'] = self.canvas.yview
 
         self.inner = tk.Frame(self.canvas, bg=bg)
-        # pack the inner Frame into the Canvas with the topleft corner 4 pixels offset
-        self.canvas.create_window(4, 4, window=self.inner, anchor='nw', tag='window')
+        self.canvas.create_window(0, 0, window=self.inner, anchor='nw', tag='window')
         self.inner.bind("<Configure>", self._on_frame_configure)
         self.canvas.bind('<Configure>', self.FrameWidth)
 

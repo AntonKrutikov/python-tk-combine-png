@@ -4,7 +4,7 @@ from tkinter.constants import NO
 from PIL import Image, ImageTk
 
 
-class Viewer(tk.Frame):
+class ImageViewer(tk.Frame):
     """
     Viewer provide Frame with Canvas, ScrollBars and Options to display Images
     """

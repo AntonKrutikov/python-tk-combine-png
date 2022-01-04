@@ -1,14 +1,14 @@
 import tkinter as tk
 from tkinter import ttk
 import os
-import widget_viewer
-import widget_vscroll
+import widget.image_viewer as image_viewer
+import widget.vscroll_frame as vscroll_frame
 import json
 from PIL import Image
 
 default_out_path = './out'
 
-class ResultViewWindow(tk.Tk):
+class Viewer(tk.Tk):
     current_file_name = None
     current_file_indx = None
     file_list = []
@@ -23,10 +23,10 @@ class ResultViewWindow(tk.Tk):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        self.nft_viewer = widget_viewer.Viewer(self, highlightthickness=1, borderwidth=1, relief="groove")
+        self.nft_viewer = image_viewer.ImageViewer(self, highlightthickness=1, borderwidth=1, relief="groove")
         self.nft_viewer.grid(column=0, row=0, sticky='nwse')
 
-        self.nft_info = widget_vscroll.VerticalScrolledFrame(self, highlightthickness=1, borderwidth=1, relief="groove")
+        self.nft_info = vscroll_frame.VerticalScrolledFrame(self, highlightthickness=1, borderwidth=1, relief="groove")
         self.nft_info.grid(column=1, row=0, sticky='nwse')
         self.nft_info.inner.columnconfigure(0, weight=1)
         self.nft_info.inner.columnconfigure(1, weight=1)
@@ -43,8 +43,6 @@ class ResultViewWindow(tk.Tk):
         self.next_button.grid(column=1, row=0, sticky='ew')
         self.has_next_item()
         
-
-
     def load_file_list(self, path = default_out_path):
         self.file_list = ["%s/%s" % (path, f) for f in os.listdir(path) if f.endswith('.json')]
         self.file_list.sort(reverse=True)
