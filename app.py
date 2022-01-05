@@ -2,6 +2,7 @@
 import argparse
 from viewer import Viewer
 from editor import Editor
+from typing import Optional
 
 description="""NFT manual generator
 
@@ -18,7 +19,7 @@ args = parser.parse_args()
 class App:
     blueprint_template: dict
     traits: list
-    viewer_instance: Viewer | None
+    viewer_instance: Optional(Viewer)
 
     def __init__(self, args) -> None:
         self.args = args

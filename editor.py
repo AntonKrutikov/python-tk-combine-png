@@ -4,6 +4,7 @@ from tkinter import font
 from PIL import Image, ImageTk
 from cairosvg import svg2png
 from io import BytesIO
+from typing import Optional
 import os
 import json
 import traits
@@ -102,13 +103,13 @@ class Editor(tk.Tk):
         else:
             label.configure(text=text, anchor='center')
 
-    def next_trait_index(self, trait) -> int | None:
+    def next_trait_index(self, trait) -> Optional(int):
         indx = trait['traits'].index(trait['current']) + 1
         if indx < len(trait['traits']):
             return indx
         return None
 
-    def prev_trait_index(self, trait) -> int | None:
+    def prev_trait_index(self, trait) -> Optional(int):
         indx = trait['traits'].index(trait['current']) - 1
         if indx >= 0:
             return indx
@@ -227,7 +228,7 @@ class Editor(tk.Tk):
             return Image.open(BytesIO(new_bites)).convert('RGBA')
         return Image.open(file).convert('RGBA')
 
-    def combine_image(self, layers: list) -> Image.Image | None:
+    def combine_image(self, layers: list) -> Optional(Image.Image):
         result = None
         for layer in layers:
             if 'current' in layer:
