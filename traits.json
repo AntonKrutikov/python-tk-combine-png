@@ -108,6 +108,10 @@
                     "path": "input/glasses.svg"
                 }
             ]
+        },
+        "transparent" :{
+            "weight": 1,
+            "file": "input/transparent.png"
         }
     }
 }

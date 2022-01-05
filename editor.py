@@ -117,9 +117,7 @@ class Editor(tk.Tk):
 
     def next_trait(self, trait: list, choice: tk.Frame):
         indx = self.next_trait_index(trait)
-        if indx == None:
-            choice.children['next_btn'].configure(state='disabled')
-        else:
+        if indx != None:
             trait['current'] = trait['traits'][indx]
             self.set_text(choice.children['filename_lbl'], trait['current']['title'])
             self.image_viewer.set_image(self.combine_image(self.traits))
@@ -127,12 +125,13 @@ class Editor(tk.Tk):
 
         if self.prev_trait_index(trait) != None:
             choice.children['prev_btn'].configure(state='normal')
+        if self.next_trait_index(trait) == None:
+            choice.children['next_btn'].configure(state='disabled')
+
     
     def prev_trait(self, trait: list, choice: tk.Frame):
         indx = self.prev_trait_index(trait)
-        if indx == None:
-            choice.children['prev_btn'].configure(state='disabled')
-        else:
+        if indx != None:
             trait['current'] = trait['traits'][indx]
             self.set_text(choice.children['filename_lbl'], trait['current']['title'])
             self.image_viewer.set_image(self.combine_image(self.traits))
@@ -140,6 +139,9 @@ class Editor(tk.Tk):
 
         if self.next_trait_index(trait) != None:
             choice.children['next_btn'].configure(state='normal')
+        if self.prev_trait_index(trait) == None:
+            choice.children['prev_btn'].configure(state='disabled')
+
 
     def recheck_conditions(self):
         for choice in self.choice_frame.inner.winfo_children():
@@ -240,7 +242,9 @@ class Editor(tk.Tk):
                         self.svg_options['default']['width'] = img.width
                         self.svg_options['default']['height'] = img.height
                     else:
-                        result = Image.alpha_composite(result, img)
+                        aimg = Image.new('RGBA', result.size)
+                        aimg.paste(img, (0,0))
+                        result = Image.alpha_composite(result, aimg)
 
         return result
 
