@@ -44,8 +44,9 @@ class Viewer(tk.Tk):
         self.has_next_item()
         
     def load_file_list(self, path = default_out_path):
-        self.file_list = ["%s/%s" % (path, f) for f in os.listdir(path) if f.endswith('.json')]
-        self.file_list.sort(reverse=True)
+        files = [f.split('.')[0] for f in os.listdir(path) if f.endswith('.json')]
+        files.sort(key=lambda x: int(x) if x.isdigit() else -1, reverse=True)
+        self.file_list = list(map(lambda f: "%s/%s.json" % (path, f), files))
         if len(self.file_list) > 0:
             self.current_file_name = self.file_list[0]
             self.current_file_indx = 0
@@ -81,6 +82,8 @@ class Viewer(tk.Tk):
                 self.load_item_attributes(info, png_path)
 
     def has_next_item(self):
+        if self.current_file_indx is None:
+            return False
         indx = self.current_file_indx + 1
         if indx < len(self.file_list):
             self.next_button['state'] = 'normal'
@@ -89,6 +92,8 @@ class Viewer(tk.Tk):
         return False
 
     def has_prev_item(self):
+        if self.current_file_indx is None:
+            return False
         indx = self.current_file_indx - 1
         if indx >= 0:
             self.prev_button['state'] = 'normal'

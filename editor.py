@@ -107,13 +107,13 @@ class Editor(tk.Tk):
         indx = trait['traits'].index(trait['current']) + 1
         if indx < len(trait['traits']):
             return indx
-        return None
+        return 0
 
     def prev_trait_index(self, trait) -> Optional[int]:
         indx = trait['traits'].index(trait['current']) - 1
         if indx >= 0:
             return indx
-        return None
+        return -1
 
     def next_trait(self, trait: list, choice: tk.Frame):
         indx = self.next_trait_index(trait)
