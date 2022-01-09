@@ -58,12 +58,15 @@ class ImageViewer(tk.Frame):
         canvas_height = self.canvas.winfo_height()
 
         ratio = 1
+        ratio_w = 1
+        ratio_h = 1
         img_width, img_height = self.source_image.size
         
-        if canvas_width > 1 and img_width >= img_height:
-            ratio = canvas_width / img_width
-        elif canvas_height > 1 and img_height >= img_width:
-            ratio = canvas_height / img_height
+        if canvas_width > 1 :
+            ratio_w = canvas_width / img_width
+            ratio_h = canvas_height / img_height
+
+        ratio = ratio_w if ratio_w < ratio_h else ratio_h
 
         if self.canvas_fit_image.get() == True:
             img_width = int(ratio * img_width)
