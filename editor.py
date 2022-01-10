@@ -10,7 +10,8 @@ import json
 import traits
 from widget.image_viewer import ImageViewer
 from widget.vscroll_frame import VerticalScrolledFrame
-
+from trait.collection import TraitCollection, TraitCollectionState
+from trait.group import TraitGroup
 
 class Editor(tk.Tk):
     svg_options = { "default": { "width": 1080, "height": 1080 } }
@@ -40,8 +41,8 @@ class Editor(tk.Tk):
         self.choice_frame.grid(row=0,column=1, sticky='nwes')
         self.choice_frame.columnconfigure(0, weight=1)
         self.choice_frame.inner.columnconfigure(0, weight=1)
-        for trait in self.traits:
-            self.add_to_choice(trait)
+        for group in self.traits.groups:
+            self.add_to_choice(group)
 
         self.show_viewer_button = tk.Button(text="NFT Viewer") #command binded from App
         self.show_viewer_button.grid(column=0, row=1, sticky='w', padx=10)
@@ -55,33 +56,33 @@ class Editor(tk.Tk):
         self.recheck_states()
     
     def load_traits(self, file):
-        self.traits = traits.load(file)
+        traits = TraitCollection()
+        traits.load_from_file(file)
+        self.traits = TraitCollectionState(traits)
 
     def load_blueprint_template(self, file):
         with open(file) as json_file:
             self.blueprint_template = json.load(json_file)
 
-    def add_to_choice(self, trait):
+    def add_to_choice(self, group:TraitGroup):
+        trait, file = self.traits.current(group)
+        
         font = ('system', 12)
         font_bold = ('system', 12, 'bold')
         lbl_width = 20
 
-        choice = tk.Frame(master=self.choice_frame.inner, name=trait['group'])
-        choice.trait = trait
+        choice = tk.Frame(master=self.choice_frame.inner, name=group.name)
+        choice.group = group #save ref for group instance
         choice.columnconfigure(1, weight=1)
-        title = tk.Label(master=choice, text="%s" % trait['group'], width=lbl_width, borderwidth = 3, font=font_bold, anchor='w')
+        title = tk.Label(master=choice, text="%s" % group.name, width=lbl_width, borderwidth = 3, font=font_bold, anchor='w')
         filename = tk.Label(master=choice, width=lbl_width, font=font, name="filename_lbl")
-        self.set_text(filename, trait['current']['title'], 18)
-        conditions = tk.Frame(master=choice, name="conditions_frm")
-        excludes = tk.Frame(master=choice, name="excludes_frm")
+        self.set_text(filename, trait.name, 18)
+        condition_frm = tk.Frame(master=choice, name="conditions_frm")
+        exclude_frm = tk.Frame(master=choice, name="excludes_frm")
         mod_available = tk.Label(master=choice, name="mod_available_frm")
         separator=ttk.Separator(master=choice, orient='horizontal')
-        prev = tk.Button(master=choice, text="<",  width=1, name="prev_btn", command=lambda: self.prev_trait(trait, choice))
-        if self.prev_trait_index(trait) == None:
-            prev.configure(state='disabled')
-        next = tk.Button(master=choice, text=">", width=1, name="next_btn", command=lambda: self.next_trait(trait, choice))
-        if self.next_trait_index(trait) == None:
-            next.configure(state='disabled')
+        prev = tk.Button(master=choice, text="<",  width=1, name="prev_btn", command=lambda: self.prev_trait(group, choice))
+        next = tk.Button(master=choice, text=">", width=1, name="next_btn", command=lambda: self.next_trait(group, choice))
 
         title.grid(row=0, column=0, columnspan=3, sticky="ew")
         prev.grid(row=1, column=0, sticky='e', padx=5)
@@ -89,8 +90,8 @@ class Editor(tk.Tk):
         next.grid(row=1, column=2, sticky='w', padx=10)
 
         mod_available.grid(row=2, column=1, sticky='we')
-        conditions.grid(row=3, column=1, sticky='we')
-        excludes.grid(row=4, column=1, sticky='we')
+        condition_frm.grid(row=3, column=1, sticky='we')
+        exclude_frm.grid(row=4, column=1, sticky='we')
 
         separator.grid(row=5, column=0, columnspan=3, pady=(10,0), sticky="we")
 
@@ -103,126 +104,166 @@ class Editor(tk.Tk):
         else:
             label.configure(text=text, anchor='center')
 
-    def next_trait_index(self, trait) -> Optional[int]:
-        indx = trait['traits'].index(trait['current']) + 1
-        if indx < len(trait['traits']):
-            return indx
-        return 0
+    def clear_frame(self, frame:tk.Frame) -> None:
+        for child in frame.winfo_children():
+            child.destroy()
+        tk.Frame(frame, height=1, width=1).pack()
 
-    def prev_trait_index(self, trait) -> Optional[int]:
-        indx = trait['traits'].index(trait['current']) - 1
-        if indx >= 0:
-            return indx
-        return -1
 
-    def next_trait(self, trait: list, choice: tk.Frame):
-        indx = self.next_trait_index(trait)
-        if indx != None:
-            trait['current'] = trait['traits'][indx]
-            self.set_text(choice.children['filename_lbl'], trait['current']['title'])
+    # def next_trait_index(self, trait) -> Optional[int]:
+    #     indx = trait['traits'].index(trait['current']) + 1
+    #     if indx < len(trait['traits']):
+    #         return indx
+    #     return 0
+
+    # def prev_trait_index(self, trait) -> Optional[int]:
+    #     indx = trait['traits'].index(trait['current']) - 1
+    #     if indx >= 0:
+    #         return indx
+    #     return -1
+
+    def next_trait(self, group:TraitGroup, choice: tk.Frame):
+        trait, file = self.traits.next(group)
+        if trait is not None:
+            self.set_text(choice.children['filename_lbl'], trait.name)
             self.image_viewer.set_image(self.combine_image(self.traits))
-            self.recheck_states()
+        self.recheck_states()
+        # indx = self.next_trait_index(trait)
+        # if indx != None:
+        #     trait['current'] = trait['traits'][indx]
+        #     self.set_text(choice.children['filename_lbl'], trait['current']['title'])
+        #     self.image_viewer.set_image(self.combine_image(self.traits))
+        #     self.recheck_states()
 
-        if self.prev_trait_index(trait) != None:
-            choice.children['prev_btn'].configure(state='normal')
-        if self.next_trait_index(trait) == None:
-            choice.children['next_btn'].configure(state='disabled')
+        # if self.prev_trait_index(trait) != None:
+        #     choice.children['prev_btn'].configure(state='normal')
+        # if self.next_trait_index(trait) == None:
+        #     choice.children['next_btn'].configure(state='disabled')
 
     
-    def prev_trait(self, trait: list, choice: tk.Frame):
-        indx = self.prev_trait_index(trait)
-        if indx != None:
-            trait['current'] = trait['traits'][indx]
-            self.set_text(choice.children['filename_lbl'], trait['current']['title'])
+    def prev_trait(self, group:TraitGroup, choice: tk.Frame):
+        trait, file = self.traits.prev(group)
+        if trait is not None:
+            self.set_text(choice.children['filename_lbl'], trait.name)
             self.image_viewer.set_image(self.combine_image(self.traits))
-            self.recheck_states()
+        self.recheck_states()
+        # indx = self.prev_trait_index(trait)
+        # if indx != None:
+        #     trait['current'] = trait['traits'][indx]
+        #     self.set_text(choice.children['filename_lbl'], trait['current']['title'])
+        #     self.image_viewer.set_image(self.combine_image(self.traits))
+        #     self.recheck_states()
 
-        if self.next_trait_index(trait) != None:
-            choice.children['next_btn'].configure(state='normal')
-        if self.prev_trait_index(trait) == None:
-            choice.children['prev_btn'].configure(state='disabled')
+        # if self.next_trait_index(trait) != None:
+        #     choice.children['next_btn'].configure(state='normal')
+        # if self.prev_trait_index(trait) == None:
+        #     choice.children['prev_btn'].configure(state='disabled')
 
 
     def recheck_conditions(self):
+        conditions = self.traits.conditions()
         for choice in self.choice_frame.inner.winfo_children():
-            conditions: tk.Frame = choice.children['conditions_frm'] 
-            for child in conditions.winfo_children():
-                child.destroy()
-            tk.Frame(conditions, height=1, width=1).pack() #hack to resize frame after cleanup
-            if 'adapted-to' in choice.trait['current']:
-                label = tk.Label(master=conditions, text='adapted to', font=('system italic', 12), foreground="#757575", pady=10)
+            condition_frm:tk.Frame = choice.children['conditions_frm'] 
+            self.clear_frame(condition_frm)
+            
+            trait, file = self.traits.current(choice.group)
+            match = conditions.get(trait, None)
+            if match is not None:
+                label = tk.Label(master=condition_frm, text='adapted to', font=('system italic', 12), foreground="#757575", pady=10)
                 f = tk.font.Font(label, label.cget('font'))
                 f.configure(slant='italic')
                 label.configure(font=f)
                 label.pack()
 
-                for cond in choice.trait['current']['adapted-to']:
-                    label = tk.Label(master=conditions, text=cond, font=('system', 12), foreground="#757575")
-                    if traits.check_condition([cond], self.traits) == True:
+                for name,ok in match:
+                    label = tk.Label(master=condition_frm, text=name, font=('system', 12), foreground="#757575")
+                    if ok:
                         label['foreground'] = '#2E7D32'
                     else:
                         label['foreground'] = '#BF360C'
                     label.pack()
 
     def recheck_excludes(self):
+        excludes = self.traits.excludes()
         for choice in self.choice_frame.inner.winfo_children():
-            excludes: tk.Frame = choice.children['excludes_frm'] 
-            for child in excludes.winfo_children():
-                child.destroy()
-            tk.Frame(excludes, height=1, width=1).pack() #hack to resize frame after cleanup
-            if 'exclude' in choice.trait['current'] and traits.check_exclude(choice.trait['current']['exclude'], self.traits):
-                label = tk.Label(master=excludes, text='exclude', font=('system italic', 12), foreground="#757575", pady=10)
+            excludes_frm: tk.Frame = choice.children['excludes_frm'] 
+            self.clear_frame(excludes_frm)
+
+            trait, file = self.traits.current(choice.group)
+            match = excludes.get(trait, None)
+            if match is not None and any(ok for name,ok in match):
+                label = tk.Label(master=excludes_frm, text='exclude', font=('system italic', 12), foreground="#757575", pady=10)
                 f = tk.font.Font(label, label.cget('font'))
                 f.configure(slant='italic')
                 label.configure(font=f)
                 label.pack()
 
-                for exc in choice.trait['current']['exclude']:        
-                    if traits.check_exclude([exc], self.traits) == True:
-                        label = tk.Label(master=excludes, text=exc, font=('system', 12), foreground="#757575")
-                        label['foreground'] = '#BF360C'
-                    label.pack()
+                for name,ok in match:        
+                    if ok:
+                        label = tk.Label(master=excludes_frm, text=name, font=('system', 12), foreground='#BF360C')
+                        label.pack()
 
     def recheck_mod_available(self):
+        adaptions = self.traits.adaptions()
         for choice in self.choice_frame.inner.winfo_children():
-            mod_available: tk.Frame = choice.children['mod_available_frm'] 
-            for child in mod_available.winfo_children():
-                child.destroy()
-            tk.Frame(mod_available, height=1, width=1).pack() #hack to resize frame after cleanup
+            mod_available_frm: tk.Frame = choice.children['mod_available_frm'] 
+            self.clear_frame(mod_available_frm)
 
-            ok, cond = traits.check_adapted_exists(choice.trait['current'], choice.trait, self.traits)
-            if ok == True:
-                label = tk.Label(master=mod_available, text='mod available for', font=('system', 12), foreground="#BF360C", pady=10)
+            trait, file = self.traits.current(choice.group)
+            match = adaptions.get(trait, None)
+            if match is not None and any(ok for name,ok in match):
+                label = tk.Label(master=mod_available_frm, text='mod available for', font=('system', 12), foreground="#BF360C", pady=10)
                 label.pack()
-                for c in cond:
-                    label_cond = tk.Label(master=mod_available, text=c, font=('system', 12), foreground="#757575")
+                for name, ok in match:
+                    label_cond = tk.Label(master=mod_available_frm, text=name, font=('system', 12), foreground="#757575")
                     label_cond.pack() 
 
     def recheck_save_button_state(self):
-        excluded = False
-        not_adapted = False
-        adapted_exists = False
-        for trait in self.traits:
-            if 'current' in trait:
-                current = trait['current']
-                if 'exclude' in current and traits.check_exclude(current['exclude'], self.traits):
-                    excluded = True
-                if 'adapted-to' in current and not traits.check_condition(current['adapted-to'], self.traits):
-                    not_adapted = True
-                ok, adapted = traits.check_adapted_exists(current, trait, self.traits)
-                if ok:
-                    adapted_exists = True
-        if excluded or not_adapted or adapted_exists:
-            self.save_button.configure(state = 'disabled')
-        else:
+        enabled = True
+
+        conditions = self.traits.conditions()
+        excludes = self.traits.excludes()
+        adaptions = self.traits.adaptions()
+
+        for _, condition in conditions.items():
+            if any(not ok for _,ok in condition):
+                enabled = False
+        
+        for _, exclude in excludes.items():
+            if any(ok for _,ok in exclude):
+                print("EXCLUDED")
+                enabled = False
+
+        for _, adaption in adaptions.items():
+            if len(adaption)>0:
+                enabled = False
+        
+        if enabled:
             self.save_button.configure(state = 'normal')
+        else:
+            self.save_button.configure(state = 'disabled')
+        # for trait in self.traits:
+        #     if 'current' in trait:
+        #         current = trait['current']
+        #         if 'exclude' in current and traits.check_exclude(current['exclude'], self.traits):
+        #             excluded = True
+        #         if 'adapted-to' in current and not traits.check_condition(current['adapted-to'], self.traits):
+        #             not_adapted = True
+        #         ok, adapted = traits.check_adapted_exists(current, trait, self.traits)
+        #         if ok:
+        #             adapted_exists = True
+        # if excluded or not_adapted or adapted_exists:
+        #     self.save_button.configure(state = 'disabled')
+        # else:
+        #     self.save_button.configure(state = 'normal')
 
     def recheck_states(self):
+        pass
         self.recheck_conditions()
         self.recheck_excludes()
         self.recheck_mod_available()
         self.recheck_save_button_state()
-        self.saved_info.configure(text='')
+        # self.saved_info.configure(text='')
 
     def open_image(self, file) -> Image.Image:
         if file.endswith('.svg'):
@@ -230,12 +271,11 @@ class Editor(tk.Tk):
             return Image.open(BytesIO(new_bites)).convert('RGBA')
         return Image.open(file).convert('RGBA')
 
-    def combine_image(self, layers: list) -> Optional[Image.Image]:
+    def combine_image(self, traits:TraitCollectionState) -> Optional[Image.Image]:
         result = None
-        for layer in layers:
-            if 'current' in layer:
-                files = layer['current']['file']
-                for file in files:
+        for group in traits.groups:
+                trait, files = traits.current(group)
+                for file in files.paths:
                     img = self.open_image(file)
                     if result == None:
                         result = img
