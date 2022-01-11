@@ -1,4 +1,8 @@
 {
+    "_out_order": [],
+    "_out_order_hide_other": false,
+    "_order": ["hand","body"],
+    "_order_hide_other": true,
     "head": {
         "Head 1": {
             "weight": 1,

@@ -3,6 +3,7 @@ import argparse
 from viewer import Viewer
 from editor import Editor
 from typing import Optional
+from nft import NFT
 
 description="""NFT manual generator
 
@@ -15,6 +16,8 @@ parser.add_argument('--blueprint', help='JSON template for generating output jso
 parser.add_argument('--viewer', help='Starts in viewer mode', nargs='?', const=-1, default=None)
 parser.add_argument('--nft-name-prefix', help='Prefix for NFT name in result json', default='NFT #')
 args = parser.parse_args()
+
+NFT.name_prefix = args.nft_name_prefix
 
 class App:
     blueprint_template: dict
@@ -32,7 +35,7 @@ class App:
     def show_viewer(self):
         self.viewer_instance = Viewer()
         self.viewer_instance.protocol("WM_DELETE_WINDOW", self.close_viewer)
-        self.viewer_instance.show_item_by_name(-1)
+        self.viewer_instance.show_item_by_file_name()
         return self.viewer_instance
 
     def close_viewer(self):
@@ -42,7 +45,7 @@ class App:
 app = App(args)
 if args.viewer:
     viewer = app.show_viewer()
-    viewer.show_item_by_name(args.viewer)
+    viewer.show_item_by_file_name(args.viewer)
     viewer.mainloop()
 else:
     app.show_editor()

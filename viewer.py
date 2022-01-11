@@ -5,18 +5,20 @@ import widget.image_viewer as image_viewer
 import widget.vscroll_frame as vscroll_frame
 import json
 from PIL import Image
+from nft import NFT
 
 default_out_path = './out'
 
 class Viewer(tk.Tk):
-    current_file_name = None
-    current_file_indx = None
-    file_list = []
+    nft_list:list[NFT] = []
+    nft_index:int = None
 
     def __init__(self, **kwargs):
         tk.Tk.__init__(self, **kwargs)
 
-        self.load_file_list()
+        self.nft_list = NFT.list()
+        if len(self.nft_list) > 0:
+            self.nft_index = 0
 
         self.title("NFT Viewer")
         self.minsize(900,600)
@@ -32,106 +34,76 @@ class Viewer(tk.Tk):
         self.nft_info.inner.columnconfigure(1, weight=1)
 
         self.nav_frame = tk.Frame(self, pady=10)
-        self.nav_frame.grid(column=1, row=2, sticky='ew')
+        self.nav_frame.grid(column=1, row=3, sticky='ew')
         self.nav_frame.columnconfigure(0, weight=1)
         self.nav_frame.columnconfigure(1, weight=1)
+        self.nav_frame.columnconfigure(2, weight=1)
 
-        self.prev_button = tk.Button(self.nav_frame, text='Prev', state='disabled', command=lambda: self.show_prev_item())
+        self.prev_button = tk.Button(self.nav_frame, text='Prev', command=lambda: self.prev_item())
         self.prev_button.grid(column=0, row=0, sticky='ew')
-        self.has_prev_item()
-        self.next_button = tk.Button(self.nav_frame, text='Next', state='disabled', command=lambda: self.show_next_item())
-        self.next_button.grid(column=1, row=0, sticky='ew')
-        self.has_next_item()
-        
-    def load_file_list(self, path = default_out_path):
-        files = [f.split('.')[0] for f in os.listdir(path) if f.endswith('.json')]
-        files.sort(key=lambda x: int(x) if x.isdigit() else -1, reverse=True)
-        self.file_list = list(map(lambda f: "%s/%s.json" % (path, f), files))
-        if len(self.file_list) > 0:
-            self.current_file_name = self.file_list[0]
-            self.current_file_indx = 0
 
-    def find_file_by_name(self, name):
-        for f in self.file_list:
-            if "%s/%s.json" % (default_out_path, name) == f:
-                return f
-        return None
+        self.nft_counter = tk.Label(self.nav_frame, text="", foreground="#666")
+        self.nft_counter.grid(column=1, row=0)
 
-    def show_item_by_name(self, name=None):
-        indx = None
-        if (name == None or name == -1) and self.current_file_indx != None:
-            indx = self.current_file_indx
+        self.next_button = tk.Button(self.nav_frame, text='Next', command=lambda: self.next_item())
+        self.next_button.grid(column=2, row=0, sticky='ew')
+
+
+    def show_item_by_file_name(self, name=None):
+        for index, nft in enumerate(self.nft_list):
+            if nft.file_name == str(name):
+                self.nft_index = index
+                break
+        self.show_item()
+
+    def show_item(self):
+        if self.nft_index is not None:
+            nft = self.nft_list[self.nft_index]
+            if os.path.isfile(nft.png_path):
+                img = Image.open(nft.png_path)
+                self.nft_viewer.set_image(img)
+            else:
+                print('Error: missing nft png file %s' % nft.png_path)
+            self.show_item_attributes()
+            self.update_counter()
+
+    def next_item(self):
+        if self.nft_index + 1 < len(self.nft_list):
+            self.nft_index += 1
         else:
-            json_file = self.find_file_by_name(name)
-            if json_file == None:
-                print("Error: File not found '%s.json' in '%s'" % (name, default_out_path))
-                exit() #TODO: hard exit...
-            indx = self.file_list.index(json_file)
-        self.show_item(indx)
+            self.nft_index = 0
+        self.show_item()
 
-    def show_item(self, indx):
-        json_file = self.file_list[indx]
-        with open(json_file) as f:
-            info = json.load(f)
-            if 'name' in info:
-                png_path = "%s.png" % json_file.rsplit('.', 1)[0]
-                if os.path.isfile(png_path):
-                    img = Image.open(png_path)
-                    self.nft_viewer.set_image(img)
-            if 'attributes' in info:
-                self.load_item_attributes(info, png_path)
+    def prev_item(self):
+        if self.nft_index - 1 >= 0:
+            self.nft_index -= 1
+        else:
+            self.nft_index = len(self.nft_list) - 1
 
-    def has_next_item(self):
-        if self.current_file_indx is None:
-            return False
-        indx = self.current_file_indx + 1
-        if indx < len(self.file_list):
-            self.next_button['state'] = 'normal'
-            return True
-        self.next_button['state'] = 'disabled'
-        return False
+        self.show_item()
 
-    def has_prev_item(self):
-        if self.current_file_indx is None:
-            return False
-        indx = self.current_file_indx - 1
-        if indx >= 0:
-            self.prev_button['state'] = 'normal'
-            return True
-        self.prev_button['state'] = 'disabled'
-        return False
+    def show_item_attributes(self):  
+        nft = self.nft_list[self.nft_index]
 
-    def show_next_item(self):
-        self.current_file_indx += 1
-        self.show_item(self.current_file_indx)
-        self.has_next_item()
-        self.has_prev_item()
-
-
-    def show_prev_item(self):
-        self.current_file_indx -= 1
-        self.show_item(self.current_file_indx)
-        self.has_prev_item()
-        self.has_next_item()
-
-    def load_item_attributes(self, info, filename):  
         for widget in self.nft_info.inner.winfo_children():
             widget.destroy()
         # Name
-        label = tk.Label(self.nft_info, text=info['name'], anchor='center', font=('system', 12, 'bold'))
+        label = tk.Label(self.nft_info, text=nft.name, anchor='center', font=('system', 12, 'bold'))
         label.grid(column=0, row=0, sticky='ew', columnspan=2, pady=(0,10))
         # filename
-        label = tk.Label(self.nft_info, text='(%s)' % filename, anchor='center', font=('system', 12, 'bold'))
+        label = tk.Label(self.nft_info, text='(%s.png)' % nft.file_name, anchor='center', font=('system', 12, 'bold'))
         label.grid(column=0, row=1, sticky='ew', columnspan=2, pady=(0,10))
-        if 'attributes' in info and isinstance(info['attributes'], list):
-            row = 2
-            for a in info['attributes']:
-                label = tk.Label(self.nft_info, text=a['trait_type'], anchor='w', font=('system', 12, 'bold'))
-                label.grid(column=0, row=row, sticky='ew')
-                label = tk.Label(self.nft_info, text=a['value'], anchor='w', font=('system', 12))
-                label.grid(column=1, row=row, sticky='ew')
-                row+=1
-                sep = ttk.Separator(self.nft_info)
-                sep.grid(column=0, row=row, columnspan=2, sticky='ew', pady=(0,10))
-                row+=1
 
+        row = 2
+        for a in nft.attributes:
+            label = tk.Label(self.nft_info, text=a['trait_type'], anchor='w', font=('system', 12, 'bold'))
+            label.grid(column=0, row=row, sticky='ew')
+            label = tk.Label(self.nft_info, text=a['value'], anchor='w', font=('system', 12))
+            label.grid(column=1, row=row, sticky='ew')
+            row+=1
+            sep = ttk.Separator(self.nft_info)
+            sep.grid(column=0, row=row, columnspan=2, sticky='ew', pady=(0,10))
+            row+=1
+
+    def update_counter(self):
+        self.nft_counter.configure(text="%s/%s" % (self.nft_index + 1, len(self.nft_list)))

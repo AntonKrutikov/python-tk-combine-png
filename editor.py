@@ -1,13 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
-from PIL import Image, ImageTk
+from PIL import Image
 from cairosvg import svg2png
 from io import BytesIO
 from typing import Optional
-import os
-import json
-import traits
+from nft import NFT
 from widget.image_viewer import ImageViewer
 from widget.vscroll_frame import VerticalScrolledFrame
 from trait.collection import TraitCollection, TraitCollectionState
@@ -20,12 +18,12 @@ class Editor(tk.Tk):
     def __init__(self, args, **kwargs):
         tk.Tk.__init__(self, **kwargs)
 
-        self.load_traits('traits.json')
-        self.load_blueprint_template(args.blueprint)
+        traits = TraitCollection()
+        traits.load_from_file('traits.json')
+        self.traits = TraitCollectionState(traits)
 
         self.svg_options['default']['width'] = args.svg_width
         self.svg_options['default']['height'] = args.svg_height
-        self.name_prefix = args.nft_name_prefix
 
         self.title("Manual NFT Generator")
         self.minsize(900,600)
@@ -54,17 +52,9 @@ class Editor(tk.Tk):
         self.saved_info.grid(row=1, column=0)
 
         self.recheck_states()
-    
-    def load_traits(self, file):
-        traits = TraitCollection()
-        traits.load_from_file(file)
-        self.traits = TraitCollectionState(traits)
-
-    def load_blueprint_template(self, file):
-        with open(file) as json_file:
-            self.blueprint_template = json.load(json_file)
 
     def add_to_choice(self, group:TraitGroup):
+        """Add selector for each traits group"""
         trait, file = self.traits.current(group)
         
         font = ('system', 12)
@@ -75,6 +65,7 @@ class Editor(tk.Tk):
         choice.group = group #save ref for group instance
         choice.columnconfigure(1, weight=1)
         title = tk.Label(master=choice, text="%s" % group.name, width=lbl_width, borderwidth = 3, font=font_bold, anchor='w')
+        counter = tk.Label(master=choice, font=('system', 10), foreground="#666666", name="counter_lbl")
         filename = tk.Label(master=choice, width=lbl_width, font=font, name="filename_lbl")
         self.set_text(filename, trait.name, 18)
         condition_frm = tk.Frame(master=choice, name="conditions_frm")
@@ -84,7 +75,8 @@ class Editor(tk.Tk):
         prev = tk.Button(master=choice, text="<",  width=1, name="prev_btn", command=lambda: self.prev_trait(group, choice))
         next = tk.Button(master=choice, text=">", width=1, name="next_btn", command=lambda: self.next_trait(group, choice))
 
-        title.grid(row=0, column=0, columnspan=3, sticky="ew")
+        title.grid(row=0, column=0, columnspan=2,  sticky="ew")
+        counter.grid(row=0, column=2)
         prev.grid(row=1, column=0, sticky='e', padx=5)
         filename.grid(row=1, column=1, sticky='we')
         next.grid(row=1, column=2, sticky='w', padx=10)
@@ -96,6 +88,8 @@ class Editor(tk.Tk):
         separator.grid(row=5, column=0, columnspan=3, pady=(10,0), sticky="we")
 
         choice.grid(column=0, sticky='ew')
+
+        self.update_counter(group)
 
     def set_text(self, label: tk.Label, text: str, max_chars: int = None) -> None:
         if max_chars != None and len(text) > max_chars:
@@ -109,58 +103,36 @@ class Editor(tk.Tk):
             child.destroy()
         tk.Frame(frame, height=1, width=1).pack()
 
+    def update_counter(self, group:TraitGroup) -> None:
+        total = len(group.traits)
+        current, file = self.traits.current(group)
+        index = group.traits.index(current)
 
-    # def next_trait_index(self, trait) -> Optional[int]:
-    #     indx = trait['traits'].index(trait['current']) + 1
-    #     if indx < len(trait['traits']):
-    #         return indx
-    #     return 0
-
-    # def prev_trait_index(self, trait) -> Optional[int]:
-    #     indx = trait['traits'].index(trait['current']) - 1
-    #     if indx >= 0:
-    #         return indx
-    #     return -1
+        total_files = len(current.files)
+        index_file = current.files.index(file)
+        for choice in self.choice_frame.inner.winfo_children():
+            if choice.group == group:
+                counter:tk.Label = choice.children['counter_lbl'] 
+                counter.configure(text="T:%s/%s F:%s/%s" % (index + 1, total, index_file + 1, total_files))
 
     def next_trait(self, group:TraitGroup, choice: tk.Frame):
         trait, file = self.traits.next(group)
         if trait is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
             self.image_viewer.set_image(self.combine_image(self.traits))
+        self.update_counter(group)
         self.recheck_states()
-        # indx = self.next_trait_index(trait)
-        # if indx != None:
-        #     trait['current'] = trait['traits'][indx]
-        #     self.set_text(choice.children['filename_lbl'], trait['current']['title'])
-        #     self.image_viewer.set_image(self.combine_image(self.traits))
-        #     self.recheck_states()
 
-        # if self.prev_trait_index(trait) != None:
-        #     choice.children['prev_btn'].configure(state='normal')
-        # if self.next_trait_index(trait) == None:
-        #     choice.children['next_btn'].configure(state='disabled')
-
-    
     def prev_trait(self, group:TraitGroup, choice: tk.Frame):
         trait, file = self.traits.prev(group)
         if trait is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
             self.image_viewer.set_image(self.combine_image(self.traits))
+        self.update_counter(group)
         self.recheck_states()
-        # indx = self.prev_trait_index(trait)
-        # if indx != None:
-        #     trait['current'] = trait['traits'][indx]
-        #     self.set_text(choice.children['filename_lbl'], trait['current']['title'])
-        #     self.image_viewer.set_image(self.combine_image(self.traits))
-        #     self.recheck_states()
-
-        # if self.next_trait_index(trait) != None:
-        #     choice.children['next_btn'].configure(state='normal')
-        # if self.prev_trait_index(trait) == None:
-        #     choice.children['prev_btn'].configure(state='disabled')
-
 
     def recheck_conditions(self):
+        """Add notify frame if trait adapted or not for one or more selected trait in other groups"""
         conditions = self.traits.conditions()
         for choice in self.choice_frame.inner.winfo_children():
             condition_frm:tk.Frame = choice.children['conditions_frm'] 
@@ -184,6 +156,7 @@ class Editor(tk.Tk):
                     label.pack()
 
     def recheck_excludes(self):
+        """Add notify frame if trait excludes for one or more of selected trait in other groups"""
         excludes = self.traits.excludes()
         for choice in self.choice_frame.inner.winfo_children():
             excludes_frm: tk.Frame = choice.children['excludes_frm'] 
@@ -203,7 +176,8 @@ class Editor(tk.Tk):
                         label = tk.Label(master=excludes_frm, text=name, font=('system', 12), foreground='#BF360C')
                         label.pack()
 
-    def recheck_mod_available(self):
+    def recheck_adaptions(self):
+        """Add notify frame to each group if modified version available for selected traits in other groups"""
         adaptions = self.traits.adaptions()
         for choice in self.choice_frame.inner.winfo_children():
             mod_available_frm: tk.Frame = choice.children['mod_available_frm'] 
@@ -219,6 +193,7 @@ class Editor(tk.Tk):
                     label_cond.pack() 
 
     def recheck_save_button_state(self):
+        """Enable or disable save button based on checks"""
         enabled = True
 
         conditions = self.traits.conditions()
@@ -226,52 +201,39 @@ class Editor(tk.Tk):
         adaptions = self.traits.adaptions()
 
         for _, condition in conditions.items():
-            if any(not ok for _,ok in condition):
+            if all(not ok for _,ok in condition):
                 enabled = False
         
         for _, exclude in excludes.items():
             if any(ok for _,ok in exclude):
-                print("EXCLUDED")
                 enabled = False
 
         for _, adaption in adaptions.items():
-            if len(adaption)>0:
+            if len(adaption) > 0:
                 enabled = False
         
         if enabled:
             self.save_button.configure(state = 'normal')
         else:
             self.save_button.configure(state = 'disabled')
-        # for trait in self.traits:
-        #     if 'current' in trait:
-        #         current = trait['current']
-        #         if 'exclude' in current and traits.check_exclude(current['exclude'], self.traits):
-        #             excluded = True
-        #         if 'adapted-to' in current and not traits.check_condition(current['adapted-to'], self.traits):
-        #             not_adapted = True
-        #         ok, adapted = traits.check_adapted_exists(current, trait, self.traits)
-        #         if ok:
-        #             adapted_exists = True
-        # if excluded or not_adapted or adapted_exists:
-        #     self.save_button.configure(state = 'disabled')
-        # else:
-        #     self.save_button.configure(state = 'normal')
 
     def recheck_states(self):
-        pass
+        """Update all condiitons, excludes, adaptions and save states"""
         self.recheck_conditions()
         self.recheck_excludes()
-        self.recheck_mod_available()
+        self.recheck_adaptions()
         self.recheck_save_button_state()
-        # self.saved_info.configure(text='')
+        self.saved_info.configure(text='')
 
     def open_image(self, file) -> Image.Image:
+        """Open image or svg file and returns Image instance"""
         if file.endswith('.svg'):
             new_bites = svg2png(file_obj=open(file, "rb"), unsafe=True, write_to=None, scale=1, output_width=self.svg_options['default']['width'], output_height=self.svg_options['default']['height'])
             return Image.open(BytesIO(new_bites)).convert('RGBA')
         return Image.open(file).convert('RGBA')
 
     def combine_image(self, traits:TraitCollectionState) -> Optional[Image.Image]:
+        """Combine resulting Image based on current selected trait and file in each group"""
         result = None
         for group in traits.groups:
                 trait, files = traits.current(group)
@@ -288,40 +250,18 @@ class Editor(tk.Tk):
 
         return result
 
-    def out_file_list(self):
-        """Return png file list from out folder with numeric names, sorted desc"""
-
-        files = [f for f in os.listdir("./out") if f.endswith('.png') and not f.endswith('.min.png')]
-        return sorted(files, key=lambda x:int(x.split('.')[0]) if x.split('.')[0].isdigit() else -1, reverse=True)
-
-    def next_out_file_index(self):
-        list = self.out_file_list()
-        if len(list) == 0:
-            return 1
-        else:
-            last = list[0]
-            indx = int(last.split('.')[0])
-            return indx + 1
-    
     def save(self):
-        file_index = self.next_out_file_index()
+        """Create new NFT instance and try to save it"""
+        attributes = []
+        order = self.traits.traits.out_order
+        for group in self.traits.groups:
+            trait, file = self.traits.current(group)
+            if not (trait.hidden or (self.traits.traits.out_order_hide_other and group.name not in order)):
+                attributes.append({"trait_type": trait.group, "value": trait.name})
+ 
+        attributes.sort(key=lambda a: order.index(a["trait_type"]) if a["trait_type"] in order else len(order))
 
-        img = self.image_viewer.source_image
-        img.save('./out/%s.png' % file_index)
-        optimized = img.convert('P')
-        optimized.save('./out/%s.min.png' % file_index)
+        nft = NFT(image=self.image_viewer.source_image, attributes=attributes)
+        ok, msg = nft.save()
 
-        self.blueprint_template['name'] = "%s%s" % (self.name_prefix, file_index)
-        self.blueprint_template['attributes'] = []
-        traits = []
-        for trait in self.traits:
-            if 'current' in trait:
-                data = trait.copy()
-                data.pop('files', None)
-                traits.append(data)
-            self.blueprint_template['attributes'].append({"trait_type": trait['group'], "value": trait['current']['title']})
-
-        with open('./out/%s.json' % file_index, 'w') as outfile:
-            json.dump(self.blueprint_template, outfile)
-
-        self.saved_info.configure(text='File saved to ./out/%s.png' % file_index)
+        self.saved_info.configure(text=msg, foreground='#BF360C' if not ok else '#000000')

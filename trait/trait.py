@@ -2,9 +2,7 @@ from typing import Optional
 from trait.file import TraitFile
 
 class Trait():
-    """
-    Represent one trait with it attributes, including paths of files from trait.json
-    """
+    """Represent one trait with it attributes, including paths of files from trait.json"""
 
     def __init__(self, name:str, group:str, weight:int = 1, hidden:bool = False) -> None:
         self.name:str = name
@@ -22,6 +20,7 @@ class Trait():
 
     @classmethod
     def parse(cls, name:str, group:str, trait_dict:dict) -> "Trait":
+        """Parse single trait from dict provided from traits.json file"""
         trait = Trait(name, group)
         
         if 'weight' in trait_dict and isinstance(trait_dict['weight'], int):
