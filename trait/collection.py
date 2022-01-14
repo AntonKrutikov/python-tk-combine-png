@@ -1,5 +1,5 @@
 import json
-from typing import Iterator, Tuple
+from typing import Iterator, Tuple, List, Dict
 from trait.file import TraitFile
 from trait.trait import Trait
 from trait.group import TraitGroup
@@ -8,13 +8,13 @@ class TraitCollection():
     """Collection of traits loaded from traits.json file. Also provide collection health check"""
 
     def __init__(self) -> None:
-        self.collection:list[Trait] = []
-        self.groups:list[TraitGroup] = []
+        self.collection:List[Trait] = []
+        self.groups:List[TraitGroup] = []
 
-        self.out_order:list[str] = []
+        self.out_order:List[str] = []
         self.out_order_hide_other:bool = False
 
-        self.order:list[str] = []
+        self.order:List[str] = []
         self.order_hide_other:bool = False
 
 
@@ -48,10 +48,10 @@ class TraitCollection():
         self.groups = self.make_groups()
         self.health_check()
 
-    def make_groups(self) -> list[TraitGroup]:
+    def make_groups(self) -> List[TraitGroup]:
         """Collect all traits to it associated group"""
 
-        groups:dict[str, TraitGroup] = {}
+        groups:Dict[str, TraitGroup] = {}
         for trait in self.collection:
             if not self.order_hide_other or trait.group in self.order:
                 if trait.group not in groups:
@@ -113,7 +113,7 @@ class TraitCollectionState():
 
     def __init__(self, traits:TraitCollection) -> None:
         self.traits:TraitCollection = traits
-        self.groups:dict[TraitGroup,Tuple[Trait, TraitFile]] = {}
+        self.groups:Dict[TraitGroup,Tuple[Trait, TraitFile]] = {}
 
         for group in traits.groups:
             # TODO: checks
@@ -164,15 +164,15 @@ class TraitCollectionState():
         self.groups[group] = (trait, file)
         return self.current(group)
 
-    def current_list(self) -> list[Tuple[Trait, TraitFile]]:
-        traits:list[Tuple[Trait, TraitFile]] = []
+    def current_list(self) -> List[Tuple[Trait, TraitFile]]:
+        traits:List[Tuple[Trait, TraitFile]] = []
         for group in self.groups:
             traits.append(self.groups[group])
         return traits
 
-    def conditions(self) -> dict[Trait,list[Tuple[str,bool]]]:
+    def conditions(self) -> Dict[Trait,List[Tuple[str,bool]]]:
         """Return adapted_to match or not for current state"""
-        match:dict[Trait,list[Tuple[str,bool]]] = {}
+        match:Dict[Trait,List[Tuple[str,bool]]] = {}
         for group in self.groups:
             trait, file = self.groups[group]
             if len(file.adapted_to) > 0:
@@ -184,9 +184,9 @@ class TraitCollectionState():
                         match[trait].append((adapted, False))
         return match
 
-    def excludes(self) -> dict[Trait,list[Tuple[str,bool]]]:
+    def excludes(self) -> Dict[Trait,List[Tuple[str,bool]]]:
         """Return excluded or not for current state"""
-        match:dict[Trait,list[Tuple[str,bool]]] = {}
+        match:Dict[Trait,List[Tuple[str,bool]]] = {}
         for group in self.groups:
             trait, file = self.groups[group]
             if len(trait.exclude) > 0:
@@ -199,8 +199,8 @@ class TraitCollectionState():
                         match[trait].append((exclude, False))
         return match
 
-    def adaptions(self) -> dict[Trait,list[Tuple[str,bool]]]:
-        match:dict[Trait,list[Tuple[str,bool]]] = {}
+    def adaptions(self) -> Dict[Trait,List[Tuple[str,bool]]]:
+        match:Dict[Trait,List[Tuple[str,bool]]] = {}
         for group in self.groups:
             trait, current_file = self.groups[group]
             match[trait] = []

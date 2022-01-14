@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List
 from trait.file import TraitFile
 
 class Trait():
@@ -9,8 +9,8 @@ class Trait():
         self.group:str = group
         self.weight:int = weight
         self.hidden:bool = hidden
-        self.files:list[TraitFile] = [] 
-        self.exclude:list[str] = []
+        self.files:List[TraitFile] = [] 
+        self.exclude:List[str] = []
         self.current_file:TraitFile = None
         self.current_file_index:int = None
 

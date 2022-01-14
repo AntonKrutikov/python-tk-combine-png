@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, List
 from PIL.Image import Image
 
 class NFT():
@@ -9,11 +9,11 @@ class NFT():
     blueprint_template:dict = None
     name_prefix:str = ''
 
-    def __init__(self, file_name:str = None, name:str = None, image:Image = None, attributes:list[dict[str,str]] = []) -> None:
+    def __init__(self, file_name:str = None, name:str = None, image:Image = None, attributes:List[Dict[str,str]] = []) -> None:
         self.file_name:str = file_name
         self.name:str = name
         self.image:Image = image
-        self.attributes:list[dict[str,str]] = attributes
+        self.attributes:List[Dict[str,str]] = attributes
 
     @property
     def json_path(self) -> str:
@@ -110,10 +110,10 @@ class NFT():
                     print('Error: Failed to load %s. Message: %s' % (path, e))
 
     @classmethod
-    def list(cls) -> list["NFT"]:
+    def list(cls) -> List["NFT"]:
         """Returns all files from out_path as NFT instance"""
 
-        nft_list:list["NFT"] = []
+        nft_list:List["NFT"] = []
 
         files = [f.split('.')[0] for f in os.listdir(cls.out_path) if f.endswith('.json')]
 

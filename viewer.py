@@ -6,11 +6,12 @@ import widget.vscroll_frame as vscroll_frame
 import json
 from PIL import Image
 from nft import NFT
+from typing import List
 
 default_out_path = './out'
 
 class Viewer(tk.Tk):
-    nft_list:list[NFT] = []
+    nft_list:List[NFT] = []
     nft_index:int = None
 
     def __init__(self, **kwargs):

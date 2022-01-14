@@ -1,13 +1,13 @@
 import os
-from typing import Union
+from typing import Union, List
 
 class TraitFile():
     """
     Represent paths for one file variant of Trait
     """
     def __init__(self) -> None:
-        self.paths:list[str] = []
-        self.adapted_to:list[str] = []
+        self.paths:List[str] = []
+        self.adapted_to:List[str] = []
 
     def load(self, path: Union[str,list,dict]) -> bool:
         if isinstance(path, str):
