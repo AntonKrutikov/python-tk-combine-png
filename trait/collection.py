@@ -1,4 +1,5 @@
 import json
+from os import name
 from typing import Iterator, Tuple, List, Dict
 from trait.file import TraitFile
 from trait.trait import Trait
@@ -46,6 +47,7 @@ class TraitCollection():
                             trait = Trait.parse(name, group, trait)
                             self.collection.append(trait)
         self.groups = self.make_groups()
+        self.print_info()
         self.health_check()
 
     def make_groups(self) -> List[TraitGroup]:
@@ -65,7 +67,7 @@ class TraitCollection():
 
     def health_check(self) -> None:
         """Do checks over self items and print notice if check failed."""
-
+        print("Health check:")
         self.check_duplicate_names()
         self.check_adapted_exists()
         self.check_excluded_exists()
@@ -106,6 +108,31 @@ class TraitCollection():
             for group in self.groups:
                 if group.name not in self.out_order:
                     print("Notice: Attribute '%s' not in out_json_order list and will be hidden in any resulting NFT json file." % group.name)
+
+    def print_info(self) -> None:
+        """Print info about collection groups and traits"""
+        # Groups
+        print("Collection Info:")
+        all_groups:Dict[str, TraitGroup] = {}
+        for trait in self.collection:
+            if trait.group not in all_groups:
+                all_groups[trait.group] = TraitGroup(trait.group)
+            all_groups[trait.group].append(trait)
+
+        print("Info: There are %s trait type(s): [%s]" % (len(all_groups), ','.join('"%s"' % group for group in all_groups)))
+        print("Info: The NFTs will consist of %s trait type(s) [%s]" % (len(self.groups), ','.join('"%s"' %group.name for group in self.groups)))
+        out_groups = []
+        for group in all_groups:
+            if self.out_order_hide_other == True:
+                if group in self.out_order:
+                    out_groups.append(group)
+            else:
+                out_groups.append(group)
+        print("Info: The JSON file will consist of %s trait type(s) [%s]" % (len(out_groups), ','.join('"%s"' % group for group in out_groups)))
+
+        # Traits per group
+        for group in all_groups:
+            print('Info: The trait type "%s" has the values [%s]' % (group, ','.join('"%s"' % trait.name for trait in all_groups[group].traits)))
 
 class TraitCollectionState():
     """Wrapper around TraitCollection which store selected trait and file per group. 
