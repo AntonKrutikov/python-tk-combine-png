@@ -1,29 +1,31 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
-from PIL import Image
-from cairosvg import svg2png
-from io import BytesIO
-from typing import Optional
 from nft import NFT
 from widget.image_viewer import ImageViewer
 from widget.vscroll_frame import VerticalScrolledFrame
 from trait.collection import TraitCollection, TraitCollectionState
 from trait.group import TraitGroup
+from merge import Merge
+from typing import List
 
 class Editor(tk.Tk):
     svg_options = { "default": { "width": 1080, "height": 1080 } }
     name_prefix = ""
 
-    def __init__(self, args, **kwargs):
+    def __init__(self, collection_list:List[TraitCollection], collection_index:int, merge:Merge, **kwargs):
         tk.Tk.__init__(self, **kwargs)
 
-        traits = TraitCollection()
-        traits.load_from_file('traits.json')
-        self.traits = TraitCollectionState(traits)
+        self.collection_list = collection_list
+        collection = collection_list[collection_index]
+        if len(collection.error_messages) > 0:
+            print('\n'.join(collection.error_messages))
 
-        self.svg_options['default']['width'] = args.svg_width
-        self.svg_options['default']['height'] = args.svg_height
+        self.traits = TraitCollectionState(collection)
+        print(collection.info)
+        collection.health_check()
+
+        self.merge = merge
 
         self.title("Manual NFT Generator")
         self.minsize(900,600)
@@ -33,7 +35,8 @@ class Editor(tk.Tk):
 
         self.image_viewer = ImageViewer(master=self, highlightthickness=1, borderwidth=1, relief="groove")
         self.image_viewer.grid(row=0, column=0, sticky='nwse')
-        self.image_viewer.set_image(self.combine_image(self.traits))
+        
+        self.image_viewer.set_image(self.merge.combine(self.traits))
 
         self.choice_frame = VerticalScrolledFrame(master=self, highlightthickness=1, borderwidth=1, relief="groove", width=250)
         self.choice_frame.grid(row=0,column=1, sticky='nwes')
@@ -119,7 +122,7 @@ class Editor(tk.Tk):
         trait, file = self.traits.next(group)
         if trait is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
-            self.image_viewer.set_image(self.combine_image(self.traits))
+            self.image_viewer.set_image(self.merge.combine(self.traits))
         self.update_counter(group)
         self.recheck_states()
 
@@ -127,7 +130,7 @@ class Editor(tk.Tk):
         trait, file = self.traits.prev(group)
         if trait is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
-            self.image_viewer.set_image(self.combine_image(self.traits))
+            self.image_viewer.set_image(self.merge.combine(self.traits))
         self.update_counter(group)
         self.recheck_states()
 
@@ -225,41 +228,15 @@ class Editor(tk.Tk):
         self.recheck_save_button_state()
         self.saved_info.configure(text='')
 
-    def open_image(self, file) -> Image.Image:
-        """Open image or svg file and returns Image instance"""
-        if file.endswith('.svg'):
-            new_bites = svg2png(file_obj=open(file, "rb"), unsafe=True, write_to=None, scale=1, output_width=self.svg_options['default']['width'], output_height=self.svg_options['default']['height'])
-            return Image.open(BytesIO(new_bites)).convert('RGBA')
-        return Image.open(file).convert('RGBA')
-
-    def combine_image(self, traits:TraitCollectionState) -> Optional[Image.Image]:
-        """Combine resulting Image based on current selected trait and file in each group"""
-        result = None
-        for group in traits.groups:
-                trait, files = traits.current(group)
-                for file in files.paths:
-                    img = self.open_image(file)
-                    if result == None:
-                        result = img
-                        self.svg_options['default']['width'] = img.width
-                        self.svg_options['default']['height'] = img.height
-                    else:
-                        aimg = Image.new('RGBA', result.size)
-                        aimg.paste(img, (0,0))
-                        result = Image.alpha_composite(result, aimg)
-
-        return result
-
     def save(self):
         """Create new NFT instance and try to save it"""
         attributes = []
-        order = self.traits.traits.out_order
-        for group in self.traits.groups:
-            trait, file = self.traits.current(group)
-            if not (trait.hidden or (self.traits.traits.out_order_hide_other and group.name not in order)):
-                attributes.append({"trait_type": trait.group, "value": trait.name})
- 
-        attributes.sort(key=lambda a: order.index(a["trait_type"]) if a["trait_type"] in order else len(order))
+        order = self.traits.traits.order.json_order
+        for json_group in order:
+            for group in self.traits.groups:
+                if group.name == json_group:
+                    trait, _ = self.traits.current(group)
+                    attributes.append({"trait_type": group.name, "value": trait.name})
 
         nft = NFT(image=self.image_viewer.source_image, attributes=attributes)
         ok, msg = nft.save()

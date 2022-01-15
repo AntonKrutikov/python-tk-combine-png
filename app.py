@@ -1,9 +1,11 @@
 
 import argparse
+from merge import Merge
 from viewer import Viewer
 from editor import Editor
-from typing import Optional
+from typing import Optional, List
 from nft import NFT
+from trait.collection import TraitCollection
 
 description="""NFT manual generator
 
@@ -15,9 +17,13 @@ parser.add_argument('--svg-height', help='Default svg height when convert to png
 parser.add_argument('--blueprint', help='JSON template for generating output json file', default='blueprint.json')
 parser.add_argument('--viewer', help='Starts in viewer mode', nargs='?', const=-1, default=None)
 parser.add_argument('--nft-name-prefix', help='Prefix for NFT name in result json', default='NFT #')
+parser.add_argument('--collection-id', help='Id of ordered collection from "_collections" attribute of traits. 0 - default not ordered,', default=0, type=int)
 args = parser.parse_args()
 
 NFT.name_prefix = args.nft_name_prefix
+
+def colored(text, r, g, b):
+    return "\033[38;2;{};{};{}m{}\033[0m".format(r, g, b, text)
 
 class App:
     blueprint_template: dict
@@ -27,8 +33,8 @@ class App:
     def __init__(self, args) -> None:
         self.args = args
        
-    def show_editor(self):
-        self.editor = Editor(args=self.args)
+    def show_editor(self, collection_list:List[TraitCollection], collection_index:int, merge:Merge):
+        self.editor = Editor(collection_list, collection_index, merge)
         self.editor.show_viewer_button.configure(command=self.show_viewer)
         self.editor.mainloop()
 
@@ -48,4 +54,16 @@ if args.viewer:
     viewer.show_item_by_file_name(args.viewer)
     viewer.mainloop()
 else:
-    app.show_editor()
+    collection_list = TraitCollection.load_from_file('traits.json')
+    print('Found %s collection(s) in "traits.json"\n' % len(collection_list))
+
+    if args.collection_id < 0 or args.collection_id >= len(collection_list):
+        print('%s: No collection in "traits.json" with index "%s"' % (colored('Error', 255, 0, 0), args.collection_id))
+        exit()
+
+    print('Using collection with index = %s' % args.collection_id)
+
+    if not collection_list[args.collection_id].is_valid():
+        exit()
+    merge = Merge(args.svg_width, args.svg_height)
+    app.show_editor(collection_list, args.collection_id, merge)

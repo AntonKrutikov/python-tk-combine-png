@@ -1,8 +1,18 @@
 {
-    "_out_order": [],
-    "_out_order_hide_other": false,
-    "_order": ["hand","body"],
-    "_order_hide_other": true,
+    "_collections": [
+        {
+            "_json_order": ["5"],
+            "_json_order_exclusion": true,
+            "_image_order": ["body","hand"],
+            "_image_order_exclusion": true
+        },
+        {
+            "_json_order": [],
+            "_json_order_exclusion": false,
+            "_image_order": ["foot"],
+            "_image_order_exclusion": false
+        }
+    ],
     "head": {
         "Head 1": {
             "weight": 1,
@@ -29,9 +39,10 @@
     "body": {
         "Body 1": {
             "weight": 1,
-            "file": [
-                "input/body-1.png"
-            ]
+            "file": {
+                "path": "input/body-1.png",
+                "adapted-to": ["unknown!"]
+            }
         },
         "Body 2": {
             "weight": 1,
@@ -84,7 +95,7 @@
                 "input/left-hand-1.png",
                 "input/right-hand-1.png"
             ],
-            "exclude": ["Head 1"]
+            "exclude": ["Head 1", "Head 2"]
         }
     },
     "foot": {

@@ -1,9 +1,121 @@
+import copy
 import json
-from os import name
-from typing import Iterator, Tuple, List, Dict
+from typing import Iterator, Tuple, List, Dict, Optional
+import trait
 from trait.file import TraitFile
 from trait.trait import Trait
 from trait.group import TraitGroup
+
+def colored(text, r, g, b):
+    return "\033[38;2;{};{};{}m{}\033[0m".format(r, g, b, text)
+
+class TraitCollectionOrder():
+
+    def __init__(self, collection:"TraitCollection" = None) -> None:
+        self.collection = collection
+        self._image_order:List[str] = []
+        self._image_order_exclusion:bool = False
+        self._json_order:List[str] = []
+        self._json_order_exclusion:bool = False
+
+        pass
+
+    def is_default(self) -> bool:
+        if self._image_order is not None or self._json_order is not None:
+            return False
+        return True
+
+    @property
+    def image_order(self) -> List[str]:
+        if len(self._image_order) == 0:
+            return [group.name for group in self.collection.groups]
+        ordered = sorted([group.name for group in self.collection.groups], key=lambda g: self._image_order.index(g) if g in self._image_order else len(self._image_order))
+        if self._image_order_exclusion == True:
+            ordered = [group for group in ordered if group in self._image_order]
+        return ordered
+
+    @property
+    def json_order(self) -> List[str]:
+        if len(self._json_order) == 0:
+            return [group.name for group in self.collection.groups]
+        ordered = sorted([group.name for group in self.collection.groups], key=lambda g: self._json_order.index(g) if g in self._json_order else len(self._json_order))
+        if self._json_order_exclusion == True:
+            ordered = [group for group in ordered if group in self._json_order]
+        return ordered
+
+    def check_image_order(self) -> Tuple[bool,str]:
+        """Check that values in "_image_order" exists in trait types"""
+
+        not_found = []
+        for o in self._image_order:
+            if o not in [group.name for group in self.collection.groups]:
+                not_found.append(o)
+        if len(not_found) > 0:
+            return False, '"_image_order" contain unknown trait type(s): [%s]' % ','.join('"%s"' % group for group in not_found)
+        return True, ''
+
+    def check_json_order(self) -> Tuple[bool,str]:
+        """Check that values in "_json_order" exists in "_image_order". Must call check_image_order() before."""
+
+        not_found = []
+        for o in self._json_order:
+            if o not in [group for group in self.image_order]:
+                not_found.append(o)
+        if len(not_found) > 0:
+            return False, '"_json_order" contain unknown trait type(s): [%s]' % ','.join('"%s"' % group for group in not_found)
+        return True,''
+
+    def check(self) -> Tuple[bool,str]:
+        ok, err = self.check_image_order()
+        if not ok:
+            return ok, err
+        ok, err = self.check_json_order()
+        if not ok:
+            return ok, err
+        return True, ''
+
+    @classmethod
+    def parse(cls, collection_list:List[Dict]) -> List["TraitCollectionOrder"]:
+        """Parse '_collections' attribute from traits.json and return List of TraitCollectionOrder"""
+
+        result = []
+        for collection in collection_list:
+            trait_order = TraitCollectionOrder()
+            trait_order._image_order = collection.get('_image_order', [])
+            trait_order._image_order_exclusion = collection.get('_image_order_exclusion', False)
+            trait_order._json_order = collection.get('_json_order', [])
+            trait_order._json_order_exclusion = collection.get('_json_order_exclusion', False)
+            result.append(trait_order)
+        return result
+
+class TraitCollectionInfo():
+    def __init__(self, collection:"TraitCollection") -> None:
+        self.collection = collection
+
+    @property
+    def original_groups(self) -> List[str]:
+        """Return all possible group(type) names from original collection"""
+
+        collection = self.collection if self.collection.original is None else self.collection.original
+        return [group.name for group in collection.groups]
+
+    @property
+    def ordered_groups(self) -> List[str]:
+        return self.collection.order.image_order
+
+    @property
+    def ordered_json(self) -> List[str]:
+        return self.collection.order.json_order
+
+    def __str__(self) -> str:
+        msg = []
+        msg.append('Info: There are %s trait type(s): [%s]' % (len(self.original_groups), ','.join('"%s"' % group for group in self.original_groups)))
+        msg.append('Info: The NFTs will consist of %s trait type(s) [%s]' % (len(self.ordered_groups), ','.join('"%s"' % group for group in self.ordered_groups)))
+        msg.append('Info: The JSON file will consist of %s trait type(s) [%s]' % (len(self.ordered_json), ','.join('"%s"' % group for group in self.ordered_json)))
+        for group in self.collection.groups:
+            msg.append('Info: The trait type "%s" has the values [%s]' % (group.name, ','.join('"%s"' % trait.name for trait in group.traits)))
+        return '\n'.join(msg)
+        
 
 class TraitCollection():
     """Collection of traits loaded from traits.json file. Also provide collection health check"""
@@ -11,13 +123,10 @@ class TraitCollection():
     def __init__(self) -> None:
         self.collection:List[Trait] = []
         self.groups:List[TraitGroup] = []
-
-        self.out_order:List[str] = []
-        self.out_order_hide_other:bool = False
-
-        self.order:List[str] = []
-        self.order_hide_other:bool = False
-
+        self.order:TraitCollectionOrder = TraitCollectionOrder(self)
+        self.original:TraitCollection = None
+        self.info:TraitCollectionInfo = TraitCollectionInfo(self)
+        self.error_messages:List[str] = []
 
     def __iter__(self) -> Iterator[Trait]:
         return self.collection.__iter__()
@@ -25,45 +134,84 @@ class TraitCollection():
     def __next__(self) -> Trait:
         return self.collection.__next__()
 
-    def load_from_file(self, path:str) -> None:
-        """Load Traits from json file. File must have valid strucutre. Not real file paths for each Trait - ignored."""
-        
+    def __copy__(self) -> "TraitCollection":
+        copy = TraitCollection()
+        copy.collection = self.collection.copy()
+        copy.groups = self.groups.copy()
+        return copy
+
+    @classmethod
+    def load_from_file(cls, path:str) -> List["TraitCollection"]:
+        """
+        Load Traits from json file. File must have valid strucutre. 
+        Not real file paths for each Trait - ignored.
+        """
+
+        collections:List["TraitCollection"] = []
+
+        default = TraitCollection()
+        order_list:List[TraitCollectionOrder] = []
+
         with open(path) as json_file:
             parsed = json.load(json_file)
             for group, traits in parsed.items():
                 group:str
-                if group == '_out_order' and isinstance(parsed[group], list):
-                    self.out_order = parsed[group]
-                if group == '_out_order_hide_other' and isinstance(parsed[group], bool):
-                    self.out_order_hide_other = parsed[group]
-                if group == '_order' and isinstance(parsed[group], list):
-                    self.order = parsed[group]
-                if group == '_order_hide_other' and isinstance(parsed[group], bool):
-                    self.order_hide_other = parsed[group]
+                if group == '_collections' and isinstance(traits, list):
+                    order_list = TraitCollectionOrder.parse(traits)
                 if not group.startswith('_'):
                     for name, trait in traits.items():
                         name:str
                         if not name.startswith('_'):
                             trait = Trait.parse(name, group, trait)
-                            self.collection.append(trait)
-        self.groups = self.make_groups()
-        self.print_info()
-        self.health_check()
+                            default.collection.append(trait)
+        default.groups = default.make_groups()
+
+        collections.append(default)
+
+        # For each "_collection" entry make ordered version
+        for order in order_list:
+            ordered = default.make_ordered(order)
+            collections.append(ordered)
+
+        return collections
+
+    def make_ordered(self, order:TraitCollectionOrder) -> Optional["TraitCollection"]:
+        ordered = copy.copy(self)
+        order.collection = ordered
+        ordered.order = order
+        ordered.original = self
+
+        ordered.groups = [group for group in ordered.groups if group.name in order.image_order]
+        # Sort collection
+        ordered.groups = sorted(ordered.groups, key=lambda g: order.image_order.index(g.name) if g.name in order.image_order else len(order.image_order))
+
+        return ordered
 
     def make_groups(self) -> List[TraitGroup]:
         """Collect all traits to it associated group"""
 
         groups:Dict[str, TraitGroup] = {}
         for trait in self.collection:
-            if not self.order_hide_other or trait.group in self.order:
-                if trait.group not in groups:
-                        groups[trait.group] = TraitGroup(trait.group)
-                groups[trait.group].append(trait)
+            if trait.group not in groups:
+                groups[trait.group] = TraitGroup(trait.group)
+            groups[trait.group].append(trait)
             
-        group_list = [group for _,group in groups.items()]
-        group_list.sort(key=lambda g: self.order.index(g.name) if g.name in self.order else len(self.order))
-        return group_list
+        return list(groups.values())
 
+    def is_valid(self) -> bool:
+        """Make fatal checks of collection, if this method return False - collection not valid"""
+
+        err_msg:List[str] = []
+        # Check order is valid
+        ok, err = self.order.check()
+        if not ok:
+            err_msg.append(err)
+
+        if len(err_msg) > 0:
+            print('\n'.join('%s %s' % (colored('Error:', 255,0,0), msg) for msg in err_msg))
+            return False
+
+        return True
 
     def health_check(self) -> None:
         """Do checks over self items and print notice if check failed."""
@@ -71,10 +219,6 @@ class TraitCollection():
         self.check_duplicate_names()
         self.check_adapted_exists()
         self.check_excluded_exists()
-        self.check_hide_out_not_ordered()
-
-    # def colored(self,r, g, b, text):
-    #     return "\033[38;2;{};{};{}m{}\033[38;2;255;255;255m".format(r, g, b, text)
 
     def check_duplicate_names(self) -> None:
         """Check if trait name not unique over whole collection"""
@@ -101,39 +245,6 @@ class TraitCollection():
                 if exclude not in [t.name for t in self.collection]:
                     print("Notice: Trait '%s -> %s' excluded for unknown trait name '%s'" % (trait.group, trait.name, exclude))
 
-    def check_hide_out_not_ordered(self) -> None:
-        """Check if group name not in order list for json output and out_json_hide_not_ordered is True"""
-
-        if self.out_order_hide_other:
-            for group in self.groups:
-                if group.name not in self.out_order:
-                    print("Notice: Attribute '%s' not in out_json_order list and will be hidden in any resulting NFT json file." % group.name)
-
-    def print_info(self) -> None:
-        """Print info about collection groups and traits"""
-        # Groups
-        print("Collection Info:")
-        all_groups:Dict[str, TraitGroup] = {}
-        for trait in self.collection:
-            if trait.group not in all_groups:
-                all_groups[trait.group] = TraitGroup(trait.group)
-            all_groups[trait.group].append(trait)
-
-        print("Info: There are %s trait type(s): [%s]" % (len(all_groups), ','.join('"%s"' % group for group in all_groups)))
-        print("Info: The NFTs will consist of %s trait type(s) [%s]" % (len(self.groups), ','.join('"%s"' %group.name for group in self.groups)))
-        out_groups = []
-        for group in all_groups:
-            if self.out_order_hide_other == True:
-                if group in self.out_order:
-                    out_groups.append(group)
-            else:
-                out_groups.append(group)
-        print("Info: The JSON file will consist of %s trait type(s) [%s]" % (len(out_groups), ','.join('"%s"' % group for group in out_groups)))
-
-        # Traits per group
-        for group in all_groups:
-            print('Info: The trait type "%s" has the values [%s]' % (group, ','.join('"%s"' % trait.name for trait in all_groups[group].traits)))
-
 class TraitCollectionState():
     """Wrapper around TraitCollection which store selected trait and file per group. 
     Also provide conndition, excludes and adoptions state."""
@@ -145,7 +256,7 @@ class TraitCollectionState():
         for group in traits.groups:
             # TODO: checks
             trait = group.traits[0]
-            file = trait.files[0]
+            file = trait.current_file
             self.groups[group] = (trait, file)
     
     def current(self, group:TraitGroup) -> Tuple[Trait, TraitFile]:
@@ -211,7 +322,7 @@ class TraitCollectionState():
                         match[trait].append((adapted, False))
         return match
 
-    def excludes(self) -> Dict[Trait,List[Tuple[str,bool]]]:
+    def excludes(self, matched_only:bool = False) -> Dict[Trait,List[Tuple[str,bool]]]:
         """Return excluded or not for current state"""
         match:Dict[Trait,List[Tuple[str,bool]]] = {}
         for group in self.groups:
@@ -219,11 +330,12 @@ class TraitCollectionState():
             if len(trait.exclude) > 0:
                 match[trait] = []
                 for exclude in trait.exclude:
-                    match[trait] = []
                     if exclude in [trait.name for trait, file in self.current_list()]:
                         match[trait].append((exclude, True))
-                    else:
+                    elif not matched_only:
                         match[trait].append((exclude, False))
+                if len(match[trait]) == 0:
+                    del match[trait]
         return match
 
     def adaptions(self) -> Dict[Trait,List[Tuple[str,bool]]]:
