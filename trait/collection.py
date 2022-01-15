@@ -181,7 +181,9 @@ class TraitCollection():
         ordered.order = order
         ordered.original = self
 
+        # TODO: more optimized solution?
         ordered.groups = [group for group in ordered.groups if group.name in order.image_order]
+        ordered.collection = [trait for trait in ordered.collection if trait.group in [group.name for group in ordered.groups]]
         # Sort collection
         ordered.groups = sorted(ordered.groups, key=lambda g: order.image_order.index(g.name) if g.name in order.image_order else len(order.image_order))
 

@@ -1,7 +1,7 @@
 {
     "_collections": [
         {
-            "_json_order": ["5"],
+            "_json_order": [],
             "_json_order_exclusion": true,
             "_image_order": ["body","hand"],
             "_image_order_exclusion": true
