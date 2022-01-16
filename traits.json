@@ -23,7 +23,7 @@
                     "adapted-to": ["Bod7y 1", "Left"]
                 }
             ],
-            "exclude": ["Right"],
+            "exclude": ["Both"],
             "hidden": true
         },
         "Head 2": {
@@ -40,8 +40,7 @@
         "Body 1": {
             "weight": 1,
             "file": {
-                "path": "input/body-1.png",
-                "adapted-to": ["unknown!"]
+                "path": "input/body-1.png"
             }
         },
         "Body 2": {
