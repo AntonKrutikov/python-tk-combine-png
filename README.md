@@ -2,7 +2,7 @@
 
 Describe all Trait types with file paths and conditions. Also describe ordered/filtered collections.
 
-```json
+```jsonc
 {
   // Type (group) of Trait. 
   // For example it can be "head", "body", "foot"
