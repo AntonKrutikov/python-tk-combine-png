@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter.constants import BOTH
 # https://gist.github.com/novel-yet-trivial/3eddfce704db3082e38c84664fc1fdf8
-class VerticalScrolledFrame:
+class VerticalScrolledFrame():
     def __init__(self, master, **kwargs):
         width = kwargs.pop('width', None)
         height = kwargs.pop('height', None)

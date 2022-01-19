@@ -38,8 +38,11 @@ class ImageViewer(tk.Frame):
 
     
     def set_image(self, img: Image.Image):
-        self.source_image = img
-        self.canvas_image_resize()
+        if img is None:
+            self.canvas.delete('all')
+        else:
+            self.source_image = img
+            self.canvas_image_resize()
     
     def on_cb_fit_image_changed(self):
         self.canvas_image_resize()

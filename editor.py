@@ -14,7 +14,7 @@ class Editor(tk.Tk):
     name_prefix = ""
 
     def __init__(self, collection_list:List[TraitCollection], collection_index:int, merge:Merge, **kwargs):
-        tk.Tk.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         self.collection_list = collection_list
         collection = collection_list[collection_index]

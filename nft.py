@@ -1,6 +1,9 @@
 import os
+import glob
 import json
+from tkinter.messagebox import NO
 from typing import Optional, Tuple, Dict, List
+from unicodedata import name
 from PIL.Image import Image
 
 class NFT():
@@ -40,6 +43,12 @@ class NFT():
         if self.image is None:
             return False, "Error: saving NFT without image"
 
+        self.save_json()
+        self.save_image()
+
+        return True, 'File saved to %s with NFT name: "%s"' % (self.png_path, self.name)
+
+    def save_json(self) -> None:
         blueprint = self.blueprint_template.copy()
         blueprint['name'] = self.name
         blueprint['attributes'] = self.attributes
@@ -47,12 +56,11 @@ class NFT():
         with open(self.json_path, 'w') as outfile:
             json.dump(blueprint, outfile)
 
-        self.image.save(self.png_path)
-
+    def save_image(self) -> None:
         optimized = self.image.convert('P')
         optimized.save(self.png_min_path)
+        self.image.save(self.png_path)
 
-        return True, 'File saved to %s with NFT name: "%s"' % (self.png_path, self.name)
 
     def unique(self) -> Tuple[bool,str]:
         """Check if NFT with it attributes already exists in list"""
@@ -60,6 +68,62 @@ class NFT():
             if len(self.attributes) == len(nft.attributes) and all(a in nft.attributes for a in self.attributes):
                 return False, 'NFT with same attributes exists: "%s" in %s' % (nft.name, nft.json_path)
         return True, None
+
+    @property
+    def name_prefix(self) -> str:
+        """Try to get collection name_prefix from nft.name"""
+        parts = self.name.rsplit('#', 1)
+        if len(parts) > 0:
+            return '%s#' % parts[0]
+        else:
+            return ''
+
+    def delete(self) -> None:
+        """Delete NFT files from out folder. file_name used as base pattern."""
+        file_list = glob.glob("%s/%s*" % (self.out_path, self.file_name))
+        for file in file_list:
+            try:
+                os.remove(file)
+            except:
+                print("Error while deleting file : ", file)
+
+    def rename(self, new_file_name:str, name_prefix:str = None) -> None:
+        # Order matter, because while update json we change file_name attribute
+        self.rename_image(new_file_name)
+        self.rename_min_image(new_file_name)
+        self.rename_json(new_file_name, name_prefix)
+   
+
+    def rename_json(self, new_file_name:str, name_prefix:str = None) -> None:
+        path= ("%s/%s.json" % (self.out_path, self.file_name))
+        # TODO: for now we use name prefix as splited json name by #
+        if name_prefix is None:
+            name_prefix = self.name_prefix
+        try:
+            os.remove(path)
+            self.file_name = new_file_name
+            self.name = "%s%s" % (name_prefix, new_file_name)
+            self.save_json()
+        except:
+            print("Error: can't rename json file: %s", path)
+
+
+    def rename_image(self, new_file_name:str) -> None:
+        path= self.png_path
+        new_path = "%s/%s.png" % (self.out_path, new_file_name)
+        try:
+            os.rename(path, new_path)
+        except Exception as e:
+            print("Error while renaming file: ", path, e)
+
+    def rename_min_image(self, new_file_name:str) -> None:
+        path= self.png_min_path
+        new_path = "%s/%s.min.png" % (self.out_path, new_file_name)
+        try:
+            os.rename(path, new_path)
+        except:
+            print("Error while renaming file: ", path)
+
 
     @classmethod
     def load(cls, file_name:str) -> Optional["NFT"]:
@@ -130,6 +194,19 @@ class NFT():
         """Returns next numeric name for files in out_path"""
 
         return str(max((int(nft.file_name) for nft in cls.list() if nft.file_name.isdigit()), default=0) + 1)
+
+    @classmethod
+    def repair(cls, name_prefix:str = None) -> List["NFT"]:
+        """
+        Rename nft files to fill missing indexes, also change name attribute in json file.
+        If name_prefix not provided - try to take name_prefix from last NFT in collection
+        """
+        ordered = sorted(cls.list(),key=lambda n: n.file_name)
+        if name_prefix is None and len(ordered) > 0:
+            name_prefix = ordered[-1].name_prefix
+        for i,nft in enumerate(ordered):
+            nft.rename(i+1, name_prefix)
+        return cls.list()
 
 # preload template on import
 NFT.load_blueprint()
