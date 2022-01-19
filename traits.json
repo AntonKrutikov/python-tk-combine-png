@@ -1,6 +1,8 @@
 {
+    "_name_prefix": "NFT main #",
     "_collections": [
         {
+            "_name_prefix": "Ordered NFT #",
             "_json_order": [],
             "_json_order_exclusion": true,
             "_image_order": ["body","hand"],
@@ -15,6 +17,7 @@
     ],
     "head": {
         "Head 1": {
+            "group": "tattoo",
             "weight": 1,
             "file": [
                 "input/head-1.png",
@@ -73,6 +76,7 @@
     },
     "hand": {
         "Left": {
+            "group": ["tattoo"],
             "weight": 1,
             "file": "input/left-hand-1.png"
         },

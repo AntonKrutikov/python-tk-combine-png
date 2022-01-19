@@ -5,7 +5,7 @@ from nft import NFT
 from widget.image_viewer import ImageViewer
 from widget.vscroll_frame import VerticalScrolledFrame
 from trait.collection import TraitCollection, TraitCollectionState
-from trait.group import TraitGroup
+from trait.trait import TraitType
 from merge import Merge
 from typing import List
 
@@ -42,7 +42,7 @@ class Editor(tk.Tk):
         self.choice_frame.grid(row=0,column=1, sticky='nwes')
         self.choice_frame.columnconfigure(0, weight=1)
         self.choice_frame.inner.columnconfigure(0, weight=1)
-        for group in self.traits.groups:
+        for group in self.traits.types:
             self.add_to_choice(group)
 
         self.show_viewer_button = tk.Button(text="NFT Viewer") #command binded from App
@@ -56,7 +56,7 @@ class Editor(tk.Tk):
 
         self.recheck_states()
 
-    def add_to_choice(self, group:TraitGroup):
+    def add_to_choice(self, group:TraitType):
         """Add selector for each traits group"""
         trait, file = self.traits.current(group)
         
@@ -106,7 +106,7 @@ class Editor(tk.Tk):
             child.destroy()
         tk.Frame(frame, height=1, width=1).pack()
 
-    def update_counter(self, group:TraitGroup) -> None:
+    def update_counter(self, group:TraitType) -> None:
         total = len(group.traits)
         current, file = self.traits.current(group)
         index = group.traits.index(current)
@@ -118,7 +118,7 @@ class Editor(tk.Tk):
                 counter:tk.Label = choice.children['counter_lbl'] 
                 counter.configure(text="T:%s/%s F:%s/%s" % (index + 1, total, index_file + 1, total_files))
 
-    def next_trait(self, group:TraitGroup, choice: tk.Frame):
+    def next_trait(self, group:TraitType, choice: tk.Frame):
         trait, file = self.traits.next(group)
         if trait is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
@@ -126,7 +126,7 @@ class Editor(tk.Tk):
         self.update_counter(group)
         self.recheck_states()
 
-    def prev_trait(self, group:TraitGroup, choice: tk.Frame):
+    def prev_trait(self, group:TraitType, choice: tk.Frame):
         trait, file = self.traits.prev(group)
         if trait is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
@@ -233,12 +233,18 @@ class Editor(tk.Tk):
         attributes = []
         order = self.traits.traits.order.json_order
         for json_group in order:
-            for group in self.traits.groups:
+            for group in self.traits.types:
                 if group.name == json_group:
                     trait, _ = self.traits.current(group)
                     attributes.append({"trait_type": group.name, "value": trait.name})
 
+        # Add groups count to attributes too
+        for group, count in self.traits.groups().items():
+            attributes.append({"group": group, "value": count})
+
         nft = NFT(image=self.image_viewer.source_image, attributes=attributes)
+        if self.traits.traits.name_prefix != '':
+            nft.name_prefix = self.traits.traits.name_prefix
         ok, msg = nft.save()
 
         self.saved_info.configure(text=msg, foreground='#BF360C' if not ok else '#000000')

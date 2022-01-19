@@ -21,7 +21,7 @@ class Merge():
     def combine(self, traits:TraitCollectionState) -> Optional[Image.Image]:
         """Combine resulting Image based on current selected trait and file in each group"""
         result = None
-        for group in traits.groups:
+        for group in traits.types:
                 trait, files = traits.current(group)
                 for file in files.paths:
                     img = self.load(file)

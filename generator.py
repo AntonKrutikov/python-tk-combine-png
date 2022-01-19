@@ -82,7 +82,7 @@ class Generator():
                     collection.append(item)
         return collection
 
-    def load_nft(self):
+    def generate(self):
         errors:Dict[NFT,List[str]] = {}
         csv = self.load_csv()
         if self.args.item is not None:
@@ -98,7 +98,7 @@ class Generator():
                 nft = NFT(name=item['name'])
                 nft_traits:TraitCollection = TraitCollection()
                 for group_name, trait_name in item['traits'].items():
-                    trait = next((trait for trait in self.traits if trait.name == trait_name and trait.group == group_name), None)
+                    trait = next((trait for trait in self.traits if trait.name == trait_name and trait.type_name == group_name), None)
                     if trait is not None:
                         nft_traits.collection.append(trait)
                     if trait is None and trait_name != '':
@@ -118,7 +118,7 @@ class Generator():
                                 trait.current_file_index = file_indx
                                 break
 
-                nft_traits.groups = nft_traits.make_groups()
+                nft_traits.types = nft_traits.make_groups()
                 state = TraitCollectionState(nft_traits)
 
                 excludes = state.excludes(matched_only=True)
@@ -144,7 +144,7 @@ class Generator():
                     attributes = []
                     order = state.traits.order.json_order
                     for json_group in order:
-                        for group in state.groups:
+                        for group in state.types:
                             if group.name == json_group:
                                 trait, _ = state.current(group)
                                 attributes.append({"trait_type": group.name, "value": trait.name})
@@ -152,6 +152,11 @@ class Generator():
                     nft.image = self.merge.combine(state)
                     if self.args.use_names == True:
                         nft.file_name = nft.name
+                    if state.traits.name_prefix != '':
+                        nft.name_prefix = state.traits.name_prefix
+                    # Add groups count to attributes too
+                    for group, count in state.groups().items():
+                        attributes.append({"group": group, "value": count})
                     ok, err = nft.save()
                     if not ok:
                         errors[nft] = ['\t%s' % err]
@@ -171,4 +176,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     merge = Merge(svg_height=args.svg_height, svg_width=args.svg_width)
     generator = Generator(args, merge)
-    generator.load_nft()
+    generator.generate()

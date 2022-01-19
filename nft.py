@@ -69,15 +69,6 @@ class NFT():
                 return False, 'NFT with same attributes exists: "%s" in %s' % (nft.name, nft.json_path)
         return True, None
 
-    @property
-    def name_prefix(self) -> str:
-        """Try to get collection name_prefix from nft.name"""
-        parts = self.name.rsplit('#', 1)
-        if len(parts) > 0:
-            return '%s#' % parts[0]
-        else:
-            return ''
-
     def delete(self) -> None:
         """Delete NFT files from out folder. file_name used as base pattern."""
         file_list = glob.glob("%s/%s*" % (self.out_path, self.file_name))
@@ -124,6 +115,14 @@ class NFT():
         except:
             print("Error while renaming file: ", path)
 
+    @classmethod
+    def parse_name_prefix(cls, name) -> str:
+        """Try to get collection name_prefix from nft.name"""
+        parts = name.rsplit('#', 1)
+        if len(parts) > 0:
+            return '%s#' % parts[0]
+        else:
+            return ''
 
     @classmethod
     def load(cls, file_name:str) -> Optional["NFT"]:
@@ -148,6 +147,7 @@ class NFT():
                 # name
                 if 'name' in parsed:
                     nft.name = parsed['name']
+                    nft.name_prefix = cls.parse_name_prefix(nft.name)
                 else:
                     print('Notice: no nft name in %s' % desc_path)
                 

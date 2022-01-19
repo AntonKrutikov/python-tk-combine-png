@@ -4,7 +4,7 @@ from typing import Iterator, Tuple, List, Dict, Optional
 import trait
 from trait.file import TraitFile
 from trait.trait import Trait
-from trait.group import TraitGroup
+from trait.trait import TraitType
 
 def colored(text, r, g, b):
     return "\033[38;2;{};{};{}m{}\033[0m".format(r, g, b, text)
@@ -17,6 +17,7 @@ class TraitCollectionOrder():
         self._image_order_exclusion:bool = False
         self._json_order:List[str] = []
         self._json_order_exclusion:bool = False
+        self.name_prefix:str = ''
 
         pass
 
@@ -28,8 +29,8 @@ class TraitCollectionOrder():
     @property
     def image_order(self) -> List[str]:
         if len(self._image_order) == 0:
-            return [group.name for group in self.collection.groups]
-        ordered = sorted([group.name for group in self.collection.groups], key=lambda g: self._image_order.index(g) if g in self._image_order else len(self._image_order))
+            return [group.name for group in self.collection.types]
+        ordered = sorted([group.name for group in self.collection.types], key=lambda g: self._image_order.index(g) if g in self._image_order else len(self._image_order))
         if self._image_order_exclusion == True:
             ordered = [group for group in ordered if group in self._image_order]
         return ordered
@@ -37,8 +38,8 @@ class TraitCollectionOrder():
     @property
     def json_order(self) -> List[str]:
         if len(self._json_order) == 0:
-            return [group.name for group in self.collection.groups]
-        ordered = sorted([group.name for group in self.collection.groups], key=lambda g: self._json_order.index(g) if g in self._json_order else len(self._json_order))
+            return [group.name for group in self.collection.types]
+        ordered = sorted([group.name for group in self.collection.types], key=lambda g: self._json_order.index(g) if g in self._json_order else len(self._json_order))
         if self._json_order_exclusion == True:
             ordered = [group for group in ordered if group in self._json_order]
         return ordered
@@ -48,7 +49,7 @@ class TraitCollectionOrder():
 
         not_found = []
         for o in self._image_order:
-            if o not in [group.name for group in self.collection.groups]:
+            if o not in [group.name for group in self.collection.types]:
                 not_found.append(o)
         if len(not_found) > 0:
             return False, '"_image_order" contain unknown trait type(s): [%s]' % ','.join('"%s"' % group for group in not_found)
@@ -85,6 +86,7 @@ class TraitCollectionOrder():
             trait_order._image_order_exclusion = collection.get('_image_order_exclusion', False)
             trait_order._json_order = collection.get('_json_order', [])
             trait_order._json_order_exclusion = collection.get('_json_order_exclusion', False)
+            trait_order.name_prefix = collection.get('_name_prefix', '')
             result.append(trait_order)
         return result
 
@@ -97,7 +99,7 @@ class TraitCollectionInfo():
         """Return all possible group(type) names from original collection"""
 
         collection = self.collection if self.collection.original is None else self.collection.original
-        return [group.name for group in collection.groups]
+        return [group.name for group in collection.types]
 
     @property
     def ordered_groups(self) -> List[str]:
@@ -112,7 +114,7 @@ class TraitCollectionInfo():
         msg.append('Info: There are %s trait type(s): [%s]' % (len(self.original_groups), ','.join('"%s"' % group for group in self.original_groups)))
         msg.append('Info: The NFTs will consist of %s trait type(s) [%s]' % (len(self.ordered_groups), ','.join('"%s"' % group for group in self.ordered_groups)))
         msg.append('Info: The JSON file will consist of %s trait type(s) [%s]' % (len(self.ordered_json), ','.join('"%s"' % group for group in self.ordered_json)))
-        for group in self.collection.groups:
+        for group in self.collection.types:
             msg.append('Info: The trait type "%s" has the values [%s]' % (group.name, ','.join('"%s"' % trait.name for trait in group.traits)))
         return '\n'.join(msg)
         
@@ -122,11 +124,12 @@ class TraitCollection():
 
     def __init__(self) -> None:
         self.collection:List[Trait] = []
-        self.groups:List[TraitGroup] = []
+        self.types:List[TraitType] = []
         self.order:TraitCollectionOrder = TraitCollectionOrder(self)
         self.original:TraitCollection = None
         self.info:TraitCollectionInfo = TraitCollectionInfo(self)
         self.error_messages:List[str] = []
+        self.name_prefix:str = ''
 
     def __iter__(self) -> Iterator[Trait]:
         return self.collection.__iter__()
@@ -137,7 +140,7 @@ class TraitCollection():
     def __copy__(self) -> "TraitCollection":
         copy = TraitCollection()
         copy.collection = self.collection.copy()
-        copy.groups = self.groups.copy()
+        copy.types = self.types.copy()
         return copy
 
     @classmethod
@@ -154,17 +157,19 @@ class TraitCollection():
 
         with open(path) as json_file:
             parsed = json.load(json_file)
-            for group, traits in parsed.items():
-                group:str
-                if group == '_collections' and isinstance(traits, list):
-                    order_list = TraitCollectionOrder.parse(traits)
-                if not group.startswith('_'):
-                    for name, trait in traits.items():
+            for attrubute, value in parsed.items():
+                attrubute:str
+                if attrubute == '_collections' and isinstance(value, list):
+                    order_list = TraitCollectionOrder.parse(value)
+                if attrubute == '_name_prefix' and isinstance(value, str):
+                    default.name_prefix = value
+                if not attrubute.startswith('_'):
+                    for name, trait in value.items():
                         name:str
                         if not name.startswith('_'):
-                            trait = Trait.parse(name, group, trait)
+                            trait = Trait.parse(name, attrubute, trait)
                             default.collection.append(trait)
-        default.groups = default.make_groups()
+        default.types = default.make_groups()
 
         collections.append(default)
 
@@ -182,21 +187,23 @@ class TraitCollection():
         ordered.original = self
 
         # TODO: more optimized solution?
-        ordered.groups = [group for group in ordered.groups if group.name in order.image_order]
-        ordered.collection = [trait for trait in ordered.collection if trait.group in [group.name for group in ordered.groups]]
+        ordered.types = [group for group in ordered.types if group.name in order.image_order]
+        ordered.collection = [trait for trait in ordered.collection if trait.type_name in [group.name for group in ordered.types]]
         # Sort collection
-        ordered.groups = sorted(ordered.groups, key=lambda g: order.image_order.index(g.name) if g.name in order.image_order else len(order.image_order))
+        ordered.types = sorted(ordered.types, key=lambda g: order.image_order.index(g.name) if g.name in order.image_order else len(order.image_order))
 
+        if order.name_prefix != '':
+            ordered.name_prefix = order.name_prefix
         return ordered
 
-    def make_groups(self) -> List[TraitGroup]:
+    def make_groups(self) -> List[TraitType]:
         """Collect all traits to it associated group"""
 
-        groups:Dict[str, TraitGroup] = {}
+        groups:Dict[str, TraitType] = {}
         for trait in self.collection:
-            if trait.group not in groups:
-                groups[trait.group] = TraitGroup(trait.group)
-            groups[trait.group].append(trait)
+            if trait.type_name not in groups:
+                groups[trait.type_name] = TraitType(trait.type_name)
+            groups[trait.type_name].append(trait)
             
         return list(groups.values())
 
@@ -228,7 +235,7 @@ class TraitCollection():
         for trait in self.collection:
             others = [other for other in self.collection if other.name == trait.name and other != trait]
             if len(others)>0:
-                print("Notice: Trait '%s -> %s' has same inner name as:" % (trait.group, trait.name), *["'%s -> %s'," % (o.group, o.name) for o in others])
+                print("Notice: Trait '%s -> %s' has same inner name as:" % (trait.type_name, trait.name), *["'%s -> %s'," % (o.type_name, o.name) for o in others])
 
     def check_adapted_exists(self) -> None:
         """Check for adapted_to property link to unknow trait name in collection"""
@@ -237,7 +244,7 @@ class TraitCollection():
             for file in trait.files:
                 for adapted in file.adapted_to:
                     if adapted not in [t.name for t in self.collection]:
-                        print("Notice: Trait '%s -> %s' adapted to unknown trait name '%s'" % (trait.group, trait.name, adapted))
+                        print("Notice: Trait '%s -> %s' adapted to unknown trait name '%s'" % (trait.type_name, trait.name, adapted))
 
     def check_excluded_exists(self) -> None:
         """Check for exclude property link to unknow trait name in collection"""
@@ -245,7 +252,7 @@ class TraitCollection():
         for trait in self.collection:
             for exclude in trait.exclude:
                 if exclude not in [t.name for t in self.collection]:
-                    print("Notice: Trait '%s -> %s' excluded for unknown trait name '%s'" % (trait.group, trait.name, exclude))
+                    print("Notice: Trait '%s -> %s' excluded for unknown trait name '%s'" % (trait.type_name, trait.name, exclude))
 
 class TraitCollectionState():
     """Wrapper around TraitCollection which store selected trait and file per group. 
@@ -253,38 +260,38 @@ class TraitCollectionState():
 
     def __init__(self, traits:TraitCollection) -> None:
         self.traits:TraitCollection = traits
-        self.groups:Dict[TraitGroup,Tuple[Trait, TraitFile]] = {}
+        self.types:Dict[TraitType,Tuple[Trait, TraitFile]] = {}
 
-        for group in traits.groups:
+        for trait_type in traits.types:
             # TODO: checks
-            trait = group.traits[0]
+            trait = trait_type.traits[0]
             file = trait.current_file
-            self.groups[group] = (trait, file)
+            self.types[trait_type] = (trait, file)
     
-    def current(self, group:TraitGroup) -> Tuple[Trait, TraitFile]:
-        return self.groups[group]
+    def current(self, trait_type:TraitType) -> Tuple[Trait, TraitFile]:
+        return self.types[trait_type]
 
-    def next(self, group:TraitGroup) ->Tuple[Trait, TraitFile]:
+    def next(self, trait_type:TraitType) ->Tuple[Trait, TraitFile]:
         """Return next file of trait or next trait"""
 
-        trait, file = self.current(group)
+        trait, file = self.current(trait_type)
 
         file_indx = trait.files.index(file)
         if file_indx + 1 < len(trait.files):
             file = trait.files[file_indx + 1]
         else:
-            trait_index = group.traits.index(trait)
-            if trait_index + 1 < len(group.traits):
-                trait = group.traits[trait_index + 1]
+            trait_index = trait_type.traits.index(trait)
+            if trait_index + 1 < len(trait_type.traits):
+                trait = trait_type.traits[trait_index + 1]
                 file = trait.files[0]
             else:
-                trait = group.traits[0]
+                trait = trait_type.traits[0]
                 file = trait.files[0]
 
-        self.groups[group] = (trait, file)
-        return self.current(group)
+        self.types[trait_type] = (trait, file)
+        return self.current(trait_type)
 
-    def prev(self, group:TraitGroup) ->Tuple[Trait, TraitFile]:
+    def prev(self, group:TraitType) ->Tuple[Trait, TraitFile]:
         """Return previous file of trait or previous trait"""
 
         trait, file = self.current(group)
@@ -301,20 +308,20 @@ class TraitCollectionState():
                 trait = group.traits[-1]
                 file = trait.files[-1]
 
-        self.groups[group] = (trait, file)
+        self.types[group] = (trait, file)
         return self.current(group)
 
     def current_list(self) -> List[Tuple[Trait, TraitFile]]:
         traits:List[Tuple[Trait, TraitFile]] = []
-        for group in self.groups:
-            traits.append(self.groups[group])
+        for group in self.types:
+            traits.append(self.types[group])
         return traits
 
     def conditions(self) -> Dict[Trait,List[Tuple[str,bool]]]:
         """Return adapted_to match or not for current state"""
         match:Dict[Trait,List[Tuple[str,bool]]] = {}
-        for group in self.groups:
-            trait, file = self.groups[group]
+        for group in self.types:
+            trait, file = self.types[group]
             if len(file.adapted_to) > 0:
                 match[trait] = []
                 for adapted in file.adapted_to:
@@ -327,8 +334,8 @@ class TraitCollectionState():
     def excludes(self, matched_only:bool = False) -> Dict[Trait,List[Tuple[str,bool]]]:
         """Return excluded or not for current state"""
         match:Dict[Trait,List[Tuple[str,bool]]] = {}
-        for group in self.groups:
-            trait, file = self.groups[group]
+        for group in self.types:
+            trait, file = self.types[group]
             if len(trait.exclude) > 0:
                 match[trait] = []
                 for exclude in trait.exclude:
@@ -342,8 +349,8 @@ class TraitCollectionState():
 
     def adaptions(self) -> Dict[Trait,List[Tuple[str,bool]]]:
         match:Dict[Trait,List[Tuple[str,bool]]] = {}
-        for group in self.groups:
-            trait, current_file = self.groups[group]
+        for group in self.types:
+            trait, current_file = self.types[group]
             match[trait] = []
             for file in trait.files:
                 if file != current_file and len(file.adapted_to) > 0:
@@ -351,3 +358,16 @@ class TraitCollectionState():
                         if adapted in [trait.name for trait, file in self.current_list()]:
                             match[trait].append((adapted, True))
         return match
+
+    def groups(self) -> Dict[str, int]:
+        """Return Trait count per group for current state"""
+        result:Dict[str,int] = {}
+        for trait_type in self.types:
+            trait, _ = self.types[trait_type]
+            for group in trait.groups:
+                if group not in result:
+                    result[group] = 0
+                result[group]+=1
+
+        return result
+    
