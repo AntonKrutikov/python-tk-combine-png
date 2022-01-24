@@ -94,6 +94,7 @@
         },
         "Both": {
             "weight": 1,
+            "group": ["jewelery"],
             "file": [
                 "input/left-hand-1.png",
                 "input/right-hand-1.png"

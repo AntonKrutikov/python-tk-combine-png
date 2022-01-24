@@ -362,12 +362,13 @@ class TraitCollectionState():
     def groups(self) -> Dict[str, int]:
         """Return Trait count per group for current state"""
         result:Dict[str,int] = {}
-        for trait_type in self.types:
-            trait, _ = self.types[trait_type]
+        for trait in self.traits:
+            # trait, _ = self.types[trait_type]
             for group in trait.groups:
                 if group not in result:
                     result[group] = 0
-                result[group]+=1
+                if trait in [t for t,f in self.current_list()]:
+                    result[group]+=1
 
         return result
     
