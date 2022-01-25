@@ -1,6 +1,7 @@
 import os
 import glob
 import json
+import random
 from tkinter.messagebox import NO
 from typing import Optional, Tuple, Dict, List
 from unicodedata import name
@@ -181,7 +182,7 @@ class NFT():
 
         files = [f.split('.')[0] for f in os.listdir(cls.out_path) if f.endswith('.json')]
 
-        ordered = sorted(files, key=lambda x:int(x) if x.isdigit() else -1, reverse=True)
+        ordered = sorted(files, key=lambda x:int(x) if x.isdigit() else -1, reverse=False)
         for item in ordered:
             nft = NFT.load(item)
             if nft is not None:
@@ -207,6 +208,47 @@ class NFT():
         for i,nft in enumerate(ordered):
             nft.rename(i+1, name_prefix)
         return cls.list()
+
+    @classmethod
+    def shuffle_names(cls) -> List["NFT"]:
+        """
+        Shuffle names in NFT resulting collection by random order, keep file names same.
+        Collection is repaired before.
+        """
+
+        collection = cls.repair()
+        names = [nft.name for nft in collection]
+        random.shuffle(names)
+        for i,nft in enumerate(collection):
+            nft.name = names[i]
+            nft.save_json()
+        
+        collection.sort(key=lambda nft: nft.file_name)
+        return collection
+    
+    @classmethod
+    def shuffle(cls) -> List["NFT"]:
+        """
+        Shuffle names and file names in NFT resulting collection by random order.
+        Collection is repaired before.
+        Use temporary renaming to underscored names to avoid file override, because we only rename, not load/save with images.
+        """
+
+        collection = cls.repair()
+        names = [nft.file_name for nft in collection].copy()
+        random.shuffle(names)
+        for i,nft in enumerate(collection):
+            # Rename to temp files to exclude conflicts (one file can overwrite another)
+            # respects nft name and filename
+            nft.rename("_%s" % names[i])
+        
+        #fix names to not temporary
+        for nft in collection:
+            nft.rename(nft.file_name[1:])
+
+        collection.sort(key=lambda nft: nft.file_name)
+        return collection
+
 
 # preload template on import
 NFT.load_blueprint()

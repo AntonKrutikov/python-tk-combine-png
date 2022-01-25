@@ -28,7 +28,7 @@ def colored(text, r, g, b):
 class App:
     blueprint_template: dict
     traits: list
-    viewer_instance: Optional[Viewer]
+    viewer_instance: Optional[Viewer] = None
 
     def __init__(self, args) -> None:
         self.args = args
@@ -39,9 +39,12 @@ class App:
         self.editor.mainloop()
 
     def show_viewer(self):
-        self.viewer_instance = Viewer()
-        self.viewer_instance.protocol("WM_DELETE_WINDOW", self.close_viewer)
-        self.viewer_instance.show_item_by_file_name()
+        if self.viewer_instance == None:
+            self.viewer_instance = Viewer()
+            self.viewer_instance.protocol("WM_DELETE_WINDOW", self.close_viewer)
+            self.viewer_instance.show_item_by_file_name()
+        else:
+            self.viewer_instance.focus_force()
         return self.viewer_instance
 
     def close_viewer(self):

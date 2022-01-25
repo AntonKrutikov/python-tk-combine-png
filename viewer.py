@@ -19,6 +19,24 @@ class DeleteButton(tk.Label):
         self.icon= tk.PhotoImage(file='delete.png', master=master)
         self.configure(image=self.icon)
 
+class RepairButton(tk.Label):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.icon= tk.PhotoImage(file='fix.png', master=master)
+        self.configure(image=self.icon)
+
+class ShuffleNamesButton(tk.Label):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.icon= tk.PhotoImage(file='shuffle.png', master=master)
+        self.configure(image=self.icon)
+
+class ShuffleButton(tk.Label):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.icon= tk.PhotoImage(file='shuffle-bold.png', master=master)
+        self.configure(image=self.icon)
+
 class InfoFrame(VerticalScrolledFrame):
     def __init__(self, master, nft:NFT, **kwargs):
         super().__init__(master, highlightthickness=1, borderwidth=1, relief="groove", **kwargs)
@@ -39,14 +57,15 @@ class InfoFrame(VerticalScrolledFrame):
 
         row = 2
         for a in nft.attributes:
-            type_lbl = tk.Label(self, text="%s:" % a['trait_type'], anchor='w', font=('system', 12, 'bold'))
-            type_lbl.grid(column=0, row=row, sticky='ew')
+            if 'trait_type' in a:
+                type_lbl = tk.Label(self, text="%s:" % a['trait_type'], anchor='w', font=('system', 12, 'bold'))
+                type_lbl.grid(column=0, row=row, sticky='ew')
 
-            value_lbl = tk.Label(self, text=a['value'], anchor='w', font=('system', 12))
-            value_lbl.grid(column=1, row=row, sticky='ew')
-            row+=1
-            ttk.Separator(self).grid(column=0, row=row, columnspan=3, sticky='ew', pady=(0,10))
-            row+=1
+                value_lbl = tk.Label(self, text=a['value'], anchor='w', font=('system', 12))
+                value_lbl.grid(column=1, row=row, sticky='ew')
+                row+=1
+                ttk.Separator(self).grid(column=0, row=row, columnspan=3, sticky='ew', pady=(0,10))
+                row+=1
 
 class Viewer(tk.Tk):
     nft_list:List[NFT] = []
@@ -94,12 +113,24 @@ class Viewer(tk.Tk):
         self.next_button = tk.Button(self.nav_frame, text='Next', command=lambda: self.next_item())
         self.next_button.grid(column=2, row=0, sticky='ew')
 
-        self.fix_image = tk.PhotoImage(file='fix.png', master=self)
-        self.repair_btn = tk.Label(self, image=self.fix_image)
+        self.tool_frm = tk.Frame(self)
+        self.tool_frm.grid(column=0, row=3, sticky='ew', padx=10)
+
+        self.repair_btn = RepairButton(self.tool_frm)
+        self.repair_btn.grid(row=0, column=0, sticky='ew', padx=(10,0))
         self.repair_btn.bind('<Button-1>', lambda e: self.repair())
-        self.repair_btn.bind('<Enter>', lambda e: self.repair_btn.configure(highlightthickness=1, highlightbackground="#222"))
-        self.repair_btn.bind('<Leave>', lambda e: self.repair_btn.configure(highlightthickness=0))
-        self.repair_btn.grid(row=3, column=0, sticky='w', padx=(10,0))
+        tk.Label(self.tool_frm, text='repair', anchor='center').grid(row=1, column=0, padx=(10,0))
+
+        shuffle_names_btn = ShuffleNamesButton(self.tool_frm)
+        shuffle_names_btn.grid(column=1, row=0, sticky='ew', padx=(10,0))
+        shuffle_names_btn.bind('<Button-1>', lambda e: self.shuffle_names())
+        tk.Label(self.tool_frm, text='shuffle names', anchor='center').grid(row=1, column=1, padx=(10,0))
+
+
+        shuffle_names_btn = ShuffleButton(self.tool_frm)
+        shuffle_names_btn.grid(column=2, row=0, sticky='ew', padx=(10,0))
+        shuffle_names_btn.bind('<Button-1>', lambda e: self.shuffle())
+        tk.Label(self.tool_frm, text='shuffle all', anchor='center').grid(row=1, column=2, padx=(10,0))
 
 
     def show_item_by_file_name(self, name=None):
@@ -175,6 +206,16 @@ class Viewer(tk.Tk):
 
     def repair(self):
         self.nft_list = NFT.repair()
+        self.nft_index = 0
+        self.show_item()
+
+    def shuffle_names(self):
+        self.nft_list = NFT.shuffle_names()
+        self.nft_index = 0
+        self.show_item()
+
+    def shuffle(self):
+        self.nft_list = NFT.shuffle()
         self.nft_index = 0
         self.show_item()
 
