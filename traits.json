@@ -1,5 +1,6 @@
 {
     "_name_prefix": "NFT main #",
+    "_blueprint":"blueprint2.json",
     "_collections": [
         {
             "_name_prefix": "Ordered NFT #",

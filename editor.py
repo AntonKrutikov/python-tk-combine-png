@@ -245,6 +245,6 @@ class Editor(tk.Tk):
         nft = NFT(image=self.image_viewer.source_image, attributes=attributes)
         if self.traits.traits.name_prefix != '':
             nft.name_prefix = self.traits.traits.name_prefix
-        ok, msg = nft.save()
+        ok, msg = nft.save(self.traits.traits.blueprint_template)
 
         self.saved_info.configure(text=msg, foreground='#BF360C' if not ok else '#000000')

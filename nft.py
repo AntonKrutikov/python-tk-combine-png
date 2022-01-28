@@ -31,7 +31,7 @@ class NFT():
     def png_min_path(self) -> str:
         return "%s/%s.min.png" % (self.out_path, self.file_name)
 
-    def save(self) -> Tuple[bool,str]:
+    def save(self, blueprint_template) -> Tuple[bool,str]:
         if len(self.attributes) == 0:
             return False, "Error: can't save NFT with empty attributes"
         unique, msg = self.unique()
@@ -44,13 +44,13 @@ class NFT():
         if self.image is None:
             return False, "Error: saving NFT without image"
 
-        self.save_json()
+        self.save_json(blueprint_template)
         self.save_image()
 
         return True, 'File saved to %s with NFT name: "%s"' % (self.png_path, self.name)
 
-    def save_json(self) -> None:
-        blueprint = self.blueprint_template.copy()
+    def save_json(self, blueprint_template) -> None:
+        blueprint = blueprint_template.copy()
         blueprint['name'] = self.name
         blueprint['attributes'] = self.attributes
         
@@ -163,16 +163,16 @@ class NFT():
 
     @classmethod
     def load_blueprint(cls, path:str = None):
-        """Load blueprint template once and store it as class variable"""
+        """Load blueprint template once and store it as class variable. This used as default blueprint."""
 
         if cls.blueprint_template is None:
             if path is None:
                 path = cls.blueprint_path
-            with open(path) as json_file:
-                try:
+            try:
+                with open(path) as json_file:
                     cls.blueprint_template = json.load(json_file)  
-                except Exception as e:
-                    print('Error: Failed to load %s. Message: %s' % (path, e))
+            except Exception as e:
+                print('Warning: Failed to load default Blueprint Template "%s". Message: %s' % (path, e))
 
     @classmethod
     def list(cls) -> List["NFT"]:
@@ -248,7 +248,3 @@ class NFT():
 
         collection.sort(key=lambda nft: nft.file_name)
         return collection
-
-
-# preload template on import
-NFT.load_blueprint()

@@ -1,6 +1,9 @@
 import copy
 import json
 from typing import Iterator, Tuple, List, Dict, Optional
+
+from attr import attributes
+from nft import NFT
 import trait
 from trait.file import TraitFile
 from trait.trait import Trait
@@ -18,7 +21,8 @@ class TraitCollectionOrder():
         self._json_order:List[str] = []
         self._json_order_exclusion:bool = False
         self.name_prefix:str = ''
-
+        self.blueprint_path:str = None
+        self.blueprint_template:Dict = None
         pass
 
     def is_default(self) -> bool:
@@ -87,6 +91,9 @@ class TraitCollectionOrder():
             trait_order._json_order = collection.get('_json_order', [])
             trait_order._json_order_exclusion = collection.get('_json_order_exclusion', False)
             trait_order.name_prefix = collection.get('_name_prefix', '')
+            trait_order.blueprint_path = collection.get('_blueprint', None)
+            if trait_order.blueprint_path is not None:
+                trait_order.blueprint_template = TraitCollection.load_blueprint(trait_order.blueprint_path)
             result.append(trait_order)
         return result
 
@@ -130,6 +137,8 @@ class TraitCollection():
         self.info:TraitCollectionInfo = TraitCollectionInfo(self)
         self.error_messages:List[str] = []
         self.name_prefix:str = ''
+        self.blueprint_path:str = None
+        self.blueprint_template:Dict = None
 
     def __iter__(self) -> Iterator[Trait]:
         return self.collection.__iter__()
@@ -141,6 +150,8 @@ class TraitCollection():
         copy = TraitCollection()
         copy.collection = self.collection.copy()
         copy.types = self.types.copy()
+        copy.blueprint_path = self.blueprint_path
+        copy.blueprint_template = self.blueprint_template
         return copy
 
     @classmethod
@@ -157,19 +168,27 @@ class TraitCollection():
 
         with open(path) as json_file:
             parsed = json.load(json_file)
-            for attrubute, value in parsed.items():
-                attrubute:str
-                if attrubute == '_collections' and isinstance(value, list):
+            for attribute, value in parsed.items():
+                attribute:str
+                if attribute == '_collections' and isinstance(value, list):
                     order_list = TraitCollectionOrder.parse(value)
-                if attrubute == '_name_prefix' and isinstance(value, str):
+                if attribute == '_name_prefix' and isinstance(value, str):
                     default.name_prefix = value
-                if not attrubute.startswith('_'):
+                if attribute == '_blueprint' and isinstance(value, str):
+                    default.blueprint_path = value
+                if not attribute.startswith('_'):
                     for name, trait in value.items():
                         name:str
                         if not name.startswith('_'):
-                            trait = Trait.parse(name, attrubute, trait)
+                            trait = Trait.parse(name, attribute, trait)
                             default.collection.append(trait)
         default.types = default.make_groups()
+
+        # Load blueprint template
+        if default.blueprint_path is not None:
+            default.blueprint_template = cls.load_blueprint(default.blueprint_path)
+        if default.blueprint_template is None:
+            default.blueprint_template = NFT.blueprint_template
 
         collections.append(default)
 
@@ -180,10 +199,25 @@ class TraitCollection():
 
         return collections
 
+    @classmethod
+    def load_blueprint(cls, path:str = None) -> Optional[Dict]:
+        """Load blueprint template once and store it as class variable. This used as default blueprint."""
+        template = None
+        if path is not None:
+            try:
+                with open(path) as json_file:
+                    template = json.load(json_file)  
+            except Exception as e:
+                print('Warning: Failed to load collection Blueprint Template "%s". Message: %s' % (path, e))
+
+        return template
+
     def make_ordered(self, order:TraitCollectionOrder) -> Optional["TraitCollection"]:
         ordered = copy.copy(self)
         order.collection = ordered
         ordered.order = order
+        if order.blueprint_template is not None:
+            ordered.blueprint_template = order.blueprint_template
         ordered.original = self
 
         # TODO: more optimized solution?
@@ -224,10 +258,20 @@ class TraitCollection():
 
     def health_check(self) -> None:
         """Do checks over self items and print notice if check failed."""
-        print("Health check:")
+        print("\nHealth check:")
+        self.check_blueprint_template()
         self.check_duplicate_names()
         self.check_adapted_exists()
         self.check_excluded_exists()
+        
+    def check_blueprint_template(self) -> None:
+        """
+        Check if collection has blueprint template
+        Order in wich path checked previously on load: TraitOrdererdCollection -> TraitCollection -> args -> blueprint.json from NFT default
+        """
+        if self.blueprint_template is None:
+            print("Critical: collection hasn't got Blueprint Template.")
+            exit()
 
     def check_duplicate_names(self) -> None:
         """Check if trait name not unique over whole collection"""
@@ -271,7 +315,7 @@ class TraitCollectionState():
     def current(self, trait_type:TraitType) -> Tuple[Trait, TraitFile]:
         return self.types[trait_type]
 
-    def next(self, trait_type:TraitType) ->Tuple[Trait, TraitFile]:
+    def next(self, trait_type:TraitType, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
         """Return next file of trait or next trait"""
 
         trait, file = self.current(trait_type)
@@ -285,31 +329,35 @@ class TraitCollectionState():
                 trait = trait_type.traits[trait_index + 1]
                 file = trait.files[0]
             else:
+                if cycle == False:
+                    return None
                 trait = trait_type.traits[0]
                 file = trait.files[0]
 
         self.types[trait_type] = (trait, file)
         return self.current(trait_type)
 
-    def prev(self, group:TraitType) ->Tuple[Trait, TraitFile]:
+    def prev(self, trait_type:TraitType, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
         """Return previous file of trait or previous trait"""
 
-        trait, file = self.current(group)
+        trait, file = self.current(trait_type)
 
         file_indx = trait.files.index(file)
         if file_indx - 1 >= 0:
             file = trait.files[file_indx - 1]
         else:
-            trait_index = group.traits.index(trait)
+            trait_index = trait_type.traits.index(trait)
             if trait_index - 1 >= 0:
-                trait = group.traits[trait_index - 1]
+                trait = trait_type.traits[trait_index - 1]
                 file = trait.files[-1]
             else:
-                trait = group.traits[-1]
+                if cycle == False:
+                    return None
+                trait = trait_type.traits[-1]
                 file = trait.files[-1]
 
-        self.types[group] = (trait, file)
-        return self.current(group)
+        self.types[trait_type] = (trait, file)
+        return self.current(trait_type)
 
     def current_list(self) -> List[Tuple[Trait, TraitFile]]:
         traits:List[Tuple[Trait, TraitFile]] = []

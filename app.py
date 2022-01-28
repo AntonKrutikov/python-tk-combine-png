@@ -21,6 +21,7 @@ parser.add_argument('--collection-id', help='Id of ordered collection from "_col
 args = parser.parse_args()
 
 NFT.name_prefix = args.nft_name_prefix
+NFT.load_blueprint(args.blueprint)
 
 def colored(text, r, g, b):
     return "\033[38;2;{};{};{}m{}\033[0m".format(r, g, b, text)
@@ -58,7 +59,7 @@ if args.viewer:
     viewer.mainloop()
 else:
     collection_list = TraitCollection.load_from_file('traits.json')
-    print('Found %s collection(s) in "traits.json"\n' % len(collection_list))
+    print('\nFound %s collection(s) in "traits.json"\n' % len(collection_list))
 
     if args.collection_id < 0 or args.collection_id >= len(collection_list):
         print('%s: No collection in "traits.json" with index "%s"' % (colored('Error', 255, 0, 0), args.collection_id))
