@@ -142,9 +142,9 @@ class Generator():
                     errors[nft] = broken_messages
                 else:
                     attributes = []
-                    order = state.traits.order.json_order
+                    order = state.collection.order.json_order
                     for json_group in order:
-                        for group in state.types:
+                        for group in state.current_state:
                             if group.name == json_group:
                                 trait, _ = state.current(group)
                                 attributes.append({"trait_type": group.name, "value": trait.name})
@@ -152,8 +152,8 @@ class Generator():
                     nft.image = self.merge.combine(state)
                     if self.args.use_names == True:
                         nft.file_name = nft.name
-                    if state.traits.name_prefix != '':
-                        nft.name_prefix = state.traits.name_prefix
+                    if state.collection.name_prefix != '':
+                        nft.name_prefix = state.collection.name_prefix
                     # Add groups count to attributes too
                     for group, count in state.groups().items():
                         attributes.append({"group": group, "value": count})

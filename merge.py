@@ -18,11 +18,11 @@ class Merge():
             return Image.open(BytesIO(new_bites)).convert('RGBA')
         return Image.open(file).convert('RGBA')
 
-    def combine(self, traits:TraitCollectionState) -> Optional[Image.Image]:
+    def combine(self, collection_state:TraitCollectionState) -> Optional[Image.Image]:
         """Combine resulting Image based on current selected trait and file in each group"""
         result = None
-        for group in traits.types:
-                trait, files = traits.current(group)
+        for trait_type in collection_state.current_state:
+                trait, files = collection_state.current(trait_type)
                 for file in files.paths:
                     img = self.load(file)
                     if result == None:

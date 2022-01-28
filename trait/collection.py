@@ -1,10 +1,10 @@
 import copy
 import json
-from typing import Iterator, Tuple, List, Dict, Optional
-
-from attr import attributes
+from typing import Iterator, Set, Tuple, List, Dict, Optional
 from nft import NFT
 import trait
+import itertools
+import csv
 from trait.file import TraitFile
 from trait.trait import Trait
 from trait.trait import TraitType
@@ -302,18 +302,18 @@ class TraitCollectionState():
     """Wrapper around TraitCollection which store selected trait and file per group. 
     Also provide conndition, excludes and adoptions state."""
 
-    def __init__(self, traits:TraitCollection) -> None:
-        self.traits:TraitCollection = traits
-        self.types:Dict[TraitType,Tuple[Trait, TraitFile]] = {}
+    def __init__(self, collection:TraitCollection) -> None:
+        self.collection:TraitCollection = collection
+        self.current_state:Dict[TraitType,Tuple[Trait, TraitFile]] = {}
 
-        for trait_type in traits.types:
+        for trait_type in collection.types:
             # TODO: checks
             trait = trait_type.traits[0]
             file = trait.current_file
-            self.types[trait_type] = (trait, file)
+            self.current_state[trait_type] = (trait, file)
     
     def current(self, trait_type:TraitType) -> Tuple[Trait, TraitFile]:
-        return self.types[trait_type]
+        return self.current_state[trait_type]
 
     def next(self, trait_type:TraitType, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
         """Return next file of trait or next trait"""
@@ -334,7 +334,7 @@ class TraitCollectionState():
                 trait = trait_type.traits[0]
                 file = trait.files[0]
 
-        self.types[trait_type] = (trait, file)
+        self.current_state[trait_type] = (trait, file)
         return self.current(trait_type)
 
     def prev(self, trait_type:TraitType, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
@@ -356,20 +356,20 @@ class TraitCollectionState():
                 trait = trait_type.traits[-1]
                 file = trait.files[-1]
 
-        self.types[trait_type] = (trait, file)
+        self.current_state[trait_type] = (trait, file)
         return self.current(trait_type)
 
     def current_list(self) -> List[Tuple[Trait, TraitFile]]:
         traits:List[Tuple[Trait, TraitFile]] = []
-        for group in self.types:
-            traits.append(self.types[group])
+        for trait_type in self.current_state:
+            traits.append(self.current_state[trait_type])
         return traits
 
     def conditions(self) -> Dict[Trait,List[Tuple[str,bool]]]:
         """Return adapted_to match or not for current state"""
         match:Dict[Trait,List[Tuple[str,bool]]] = {}
-        for group in self.types:
-            trait, file = self.types[group]
+        for trait_type in self.current_state:
+            trait, file = self.current_state[trait_type]
             if len(file.adapted_to) > 0:
                 match[trait] = []
                 for adapted in file.adapted_to:
@@ -382,8 +382,8 @@ class TraitCollectionState():
     def excludes(self, matched_only:bool = False) -> Dict[Trait,List[Tuple[str,bool]]]:
         """Return excluded or not for current state"""
         match:Dict[Trait,List[Tuple[str,bool]]] = {}
-        for group in self.types:
-            trait, file = self.types[group]
+        for trait_type in self.current_state:
+            trait, file = self.current_state[trait_type]
             if len(trait.exclude) > 0:
                 match[trait] = []
                 for exclude in trait.exclude:
@@ -397,8 +397,8 @@ class TraitCollectionState():
 
     def adaptions(self) -> Dict[Trait,List[Tuple[str,bool]]]:
         match:Dict[Trait,List[Tuple[str,bool]]] = {}
-        for group in self.types:
-            trait, current_file = self.types[group]
+        for trait_type in self.current_state:
+            trait, current_file = self.current_state[trait_type]
             match[trait] = []
             for file in trait.files:
                 if file != current_file and len(file.adapted_to) > 0:
@@ -407,10 +407,27 @@ class TraitCollectionState():
                             match[trait].append((adapted, True))
         return match
 
+    def valid(self):
+        valid = True
+
+        for _, condition in self.conditions().items():
+            if all(not ok for _,ok in condition):
+                valid = False
+        
+        for _, exclude in self.excludes().items():
+            if any(ok for _,ok in exclude):
+                valid = False
+
+        for _, adaption in self.adaptions().items():
+            if len(adaption) > 0:
+                valid = False
+        
+        return valid
+
     def groups(self) -> Dict[str, int]:
         """Return Trait count per group for current state"""
         result:Dict[str,int] = {}
-        for trait in self.traits:
+        for trait in self.collection:
             # trait, _ = self.types[trait_type]
             for group in trait.groups:
                 if group not in result:
@@ -419,4 +436,63 @@ class TraitCollectionState():
                     result[group]+=1
 
         return result
-    
+
+    def valid_combinations(self) -> Set[List[Trait]]:
+        """Find all valid combinations other current collection"""
+        
+        result:List[List[Trait]] = []
+
+        # TODO: think about not use same state
+        # Save current state to back it after all operations
+        state_before = self.current_state
+
+        # Collect List of Traits per TraitType in one List to latter product making
+        traits_by_type:List[List[Trait]] = []
+        for type in self.collection.types:
+            traits_by_type.append(type.traits)
+
+        # While we can use more than 1 file per Trait, we need to make combinations other (Trait, TraitFile) not pure Trait
+        trait_file_by_type:List[List[Tuple[Trait, TraitFile]]] = []
+        for traits in traits_by_type:
+            trait_file = []
+            for trait in traits:
+                for file in trait.files:
+                    trait_file.append((trait, file))
+            trait_file_by_type.append(trait_file)
+
+        # Make product as all possible combination
+        # Python magic here
+        combinations:List[Tuple[Trait,TraitFile]] = list(itertools.product(*trait_file_by_type))
+
+        # iterate over all generated combinations
+        for variant in combinations:
+            # make state
+            state:Dict[TraitType,Tuple[Trait, TraitFile]] = {}
+            for trait, file in variant:
+                trait:Trait
+                file:TraitFile
+                state[TraitType(trait.type_name)] = (trait,file)
+            self.current_state = state
+            if self.valid():
+                result.append(tuple(map(lambda tf: tf[0],variant)))
+
+        self.current_state = state_before
+        return set(result)
+
+    def valid_combinations_to_csv(self, path) -> None:
+        """Return valid combinations with header row"""
+        headers = [trait_type.name for trait_type in self.current_state]
+        headers.insert(0,'name')
+        headers.append('rarity_score')
+        combinations = self.valid_combinations()
+        try:
+            with open(path,'w') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow(headers)
+                for i,variant in enumerate(combinations):
+                    row = [trait.name for trait in variant]
+                    row.insert(0, '%s%s' % (self.collection.name_prefix, i+1))
+                    csv_writer.writerow(row)
+        except Exception as e:
+            print('Error: can\'t generate csv index. ', e)
+       

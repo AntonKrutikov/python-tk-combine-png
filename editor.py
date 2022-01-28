@@ -42,7 +42,7 @@ class Editor(tk.Tk):
         self.choice_frame.grid(row=0,column=1, sticky='nwes')
         self.choice_frame.columnconfigure(0, weight=1)
         self.choice_frame.inner.columnconfigure(0, weight=1)
-        for group in self.traits.types:
+        for group in self.traits.current_state:
             self.add_to_choice(group)
 
         self.show_viewer_button = tk.Button(text="NFT Viewer") #command binded from App
@@ -231,9 +231,9 @@ class Editor(tk.Tk):
     def save(self):
         """Create new NFT instance and try to save it"""
         attributes = []
-        order = self.traits.traits.order.json_order
+        order = self.traits.collection.order.json_order
         for json_group in order:
-            for group in self.traits.types:
+            for group in self.traits.current_state:
                 if group.name == json_group:
                     trait, _ = self.traits.current(group)
                     attributes.append({"trait_type": group.name, "value": trait.name})
@@ -243,8 +243,8 @@ class Editor(tk.Tk):
             attributes.append({"group": group, "value": count})
 
         nft = NFT(image=self.image_viewer.source_image, attributes=attributes)
-        if self.traits.traits.name_prefix != '':
-            nft.name_prefix = self.traits.traits.name_prefix
-        ok, msg = nft.save(self.traits.traits.blueprint_template)
+        if self.traits.collection.name_prefix != '':
+            nft.name_prefix = self.traits.collection.name_prefix
+        ok, msg = nft.save(self.traits.collection.blueprint_template)
 
         self.saved_info.configure(text=msg, foreground='#BF360C' if not ok else '#000000')
