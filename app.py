@@ -70,9 +70,12 @@ else:
 
     if not collection_list[args.collection_id].is_valid():
         exit()
+    # show wich blueprint using
+    print('Info: using "%s" as blueprint template' % collection_list[args.collection_id].blueprint_path)
     # generate csv index
     if args.generate_csv_index is not None:
         state = TraitCollectionState(collection_list[args.collection_id])
         state.valid_combinations_to_csv(args.generate_csv_index)
+        exit()
     merge = Merge(args.svg_width, args.svg_height)
     app.show_editor(collection_list, args.collection_id, merge)

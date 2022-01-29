@@ -493,6 +493,7 @@ class TraitCollectionState():
                     row = [trait.name for trait in variant]
                     row.insert(0, '%s%s' % (self.collection.name_prefix, i+1))
                     csv_writer.writerow(row)
+            print('\nCsv file "%s" created' % path)
         except Exception as e:
             print('Error: can\'t generate csv index. ', e)
        
