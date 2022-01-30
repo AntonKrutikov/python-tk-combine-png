@@ -456,7 +456,7 @@ class TraitCollectionState():
 
         max_count = self.total_combinations_count()
         if count > max_count:
-            print("Notice: Requested %s combinations, but collection has %s combinations (and less valid compinations)" % (count, max_count))
+            print("Notice: Requested %s combinations, but collection has %s combinations (and less valid combinations)" % (count, max_count))
             count = max_count
 
         result:Set[Tuple[Trait]] = set()
