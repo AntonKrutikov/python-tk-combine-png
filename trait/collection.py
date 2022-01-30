@@ -1,9 +1,11 @@
 import copy
 import json
+from random import random
 from typing import Iterator, Set, Tuple, List, Dict, Optional
 from nft import NFT
 import trait
 import itertools
+import random
 import csv
 from trait.file import TraitFile
 from trait.trait import Trait
@@ -437,54 +439,57 @@ class TraitCollectionState():
 
         return result
 
-    def valid_combinations(self) -> Set[List[Trait]]:
-        """Find all valid combinations other current collection"""
-        
-        result:List[List[Trait]] = []
+    def total_combinations_count(self) -> int:
+        """Return max possible combination inside current collection, including valid and invalid"""
 
-        # TODO: think about not use same state
-        # Save current state to back it after all operations
-        state_before = self.current_state
+        total_combinations = 1
+        for i in self.collection.types:
+            total_combinations = total_combinations * len(i.traits)
+        return total_combinations
 
-        # Collect List of Traits per TraitType in one List to latter product making
-        traits_by_type:List[List[Trait]] = []
-        for type in self.collection.types:
-            traits_by_type.append(type.traits)
+    def valid_combinations(self, count:int = 10, respect_weights:bool = True) -> Set[Tuple[Trait]]:
+        """
+        Find N valid combinations from collection.
+        Breaks if max iterations exceed, iteration count = count * 100.
+        If requested more than max possible combinations - notice will produce.
+        """
 
-        # While we can use more than 1 file per Trait, we need to make combinations other (Trait, TraitFile) not pure Trait
-        trait_file_by_type:List[List[Tuple[Trait, TraitFile]]] = []
-        for traits in traits_by_type:
-            trait_file = []
-            for trait in traits:
-                for file in trait.files:
-                    trait_file.append((trait, file))
-            trait_file_by_type.append(trait_file)
+        max_count = self.total_combinations_count()
+        if count > max_count:
+            print("Notice: Requested %s combinations, but collection has %s combinations (and less valid compinations)" % (count, max_count))
+            count = max_count
 
-        # Make product as all possible combination
-        # Python magic here
-        combinations:List[Tuple[Trait,TraitFile]] = list(itertools.product(*trait_file_by_type))
+        result:Set[Tuple[Trait]] = set()
+        iterations = 0
 
-        # iterate over all generated combinations
-        for variant in combinations:
-            # make state
-            state:Dict[TraitType,Tuple[Trait, TraitFile]] = {}
-            for trait, file in variant:
-                trait:Trait
-                file:TraitFile
-                state[TraitType(trait.type_name)] = (trait,file)
-            self.current_state = state
-            if self.valid():
-                result.append(tuple(map(lambda tf: tf[0],variant)))
+        while len(result) < count and iterations < count * 100:
+            iterations += 1
+            variant:Tuple[Trait] = []
+            state = TraitCollectionState(self.collection)
+            for trait_type in self.collection.types:
+                # read weight attribute from traits in type
+                if respect_weights == True:
+                    weights = [trait.weight for trait in trait_type.traits]
+                else:
+                    weights = [1 for trait in trait_type.traits]
+                trait = random.choices(trait_type.traits, weights=weights, k=1)[0]
+                file = random.choices(trait.files, k=1)[0]
+                state.current_state[trait_type] = (trait, file)
+            if state.valid():
+                variant = tuple(trait for trait, file in state.current_state.values())
+                result.add(variant)
+        if len(result) < count:
+            print('Notice: Obtained only %s valid combinations of requested %s. (%s iterations done)' % (len(result), count, iterations))
+        return result
 
-        self.current_state = state_before
-        return set(result)
-
-    def valid_combinations_to_csv(self, path) -> None:
+    def valid_combinations_to_csv(self, path:str, count:int = 10, respect_weights:bool = True) -> None:
         """Return valid combinations with header row"""
+        combinations = self.valid_combinations(count, respect_weights)
+ 
         headers = [trait_type.name for trait_type in self.current_state]
         headers.insert(0,'name')
         headers.append('rarity_score')
-        combinations = self.valid_combinations()
+        
         try:
             with open(path,'w') as csv_file:
                 csv_writer = csv.writer(csv_file)

@@ -19,7 +19,7 @@
     "head": {
         "Head 1": {
             "group": "tattoo",
-            "weight": 1,
+            "weight": 90,
             "file": [
                 "input/head-1.png",
                 {
@@ -31,24 +31,24 @@
             "hidden": true
         },
         "Head 2": {
-            "weight": 1,
+            "weight": 5,
             "file": "input/head-2.png",
             "exclude": ["456"]
         },
         "Head 3": {
-            "weight": 1,
+            "weight": 5,
             "file": "input/head-3.png"
         }
     },
     "body": {
         "Body 1": {
-            "weight": 1,
+            "weight": 50,
             "file": {
                 "path": "input/body-1.png"
             }
         },
         "Body 2": {
-            "weight": 1,
+            "weight": 25,
             "file": [
                 "input/body-1.png",
                 {
@@ -66,7 +66,7 @@
             ]
         },
         "Body 3": {
-            "weight": 1,
+            "weight": 25,
             "file": {
                 "adapted-to": [
                     "Head 3"
