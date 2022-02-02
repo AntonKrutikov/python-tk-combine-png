@@ -4,3 +4,5 @@ __pycache__
 test.py
 test.svg
 reference
+*.csv
+temp.txt

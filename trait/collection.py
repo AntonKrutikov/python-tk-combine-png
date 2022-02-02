@@ -190,6 +190,7 @@ class TraitCollection():
         if default.blueprint_path is not None:
             default.blueprint_template = cls.load_blueprint(default.blueprint_path)
         if default.blueprint_template is None:
+            default.blueprint_path = NFT.blueprint_path
             default.blueprint_template = NFT.blueprint_template
 
         collections.append(default)
@@ -220,6 +221,9 @@ class TraitCollection():
         ordered.order = order
         if order.blueprint_template is not None:
             ordered.blueprint_template = order.blueprint_template
+        else:
+            ordered.blueprint_path = self.blueprint_path
+            ordered.blueprint_template = self.blueprint_template
         ordered.original = self
 
         # TODO: more optimized solution?
@@ -447,7 +451,7 @@ class TraitCollectionState():
             total_combinations = total_combinations * len(i.traits)
         return total_combinations
 
-    def valid_combinations(self, count:int = 10, respect_weights:bool = True) -> Set[Tuple[Trait]]:
+    def valid_combinations(self, count:int = 10, respect_weights:bool = False) -> Set[Tuple[Trait]]:
         """
         Find N valid combinations from collection.
         Breaks if max iterations exceed, iteration count = count * 100.
@@ -482,7 +486,7 @@ class TraitCollectionState():
             print('Notice: Obtained only %s valid combinations of requested %s. (%s iterations done)' % (len(result), count, iterations))
         return result
 
-    def valid_combinations_to_csv(self, path:str, count:int = 10, respect_weights:bool = True) -> None:
+    def valid_combinations_to_csv(self, path:str, count:int = 10, respect_weights:bool = False) -> None:
         """Return valid combinations with header row"""
         combinations = self.valid_combinations(count, respect_weights)
  
@@ -498,7 +502,7 @@ class TraitCollectionState():
                     row = [trait.name for trait in variant]
                     row.insert(0, '%s%s' % (self.collection.name_prefix, i+1))
                     csv_writer.writerow(row)
-            print('\nCsv file "%s" created' % path)
+            print('\n%s created' % path)
         except Exception as e:
             print('Error: can\'t generate csv index. ', e)
        

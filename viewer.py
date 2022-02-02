@@ -16,25 +16,25 @@ from typing import List
 class DeleteButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='delete.png', master=master)
+        self.icon= tk.PhotoImage(file='ui/delete.png', master=master)
         self.configure(image=self.icon)
 
 class RepairButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='fix.png', master=master)
+        self.icon= tk.PhotoImage(file='ui/fix.png', master=master)
         self.configure(image=self.icon)
 
 class ShuffleNamesButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='shuffle.png', master=master)
+        self.icon= tk.PhotoImage(file='ui/shuffle.png', master=master)
         self.configure(image=self.icon)
 
 class ShuffleButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='shuffle-bold.png', master=master)
+        self.icon= tk.PhotoImage(file='ui/shuffle-bold.png', master=master)
         self.configure(image=self.icon)
 
 class InfoFrame(VerticalScrolledFrame):

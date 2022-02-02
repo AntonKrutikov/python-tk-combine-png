@@ -22,8 +22,6 @@ class Editor(tk.Tk):
             print('\n'.join(collection.error_messages))
 
         self.traits = TraitCollectionState(collection)
-        print(collection.info)
-        collection.health_check()
 
         self.merge = merge
 

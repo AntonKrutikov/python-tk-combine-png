@@ -1,5 +1,8 @@
 
 import argparse
+from ipaddress import collapse_addresses
+
+from parso import parse
 from merge import Merge
 from viewer import Viewer
 from editor import Editor
@@ -7,22 +10,30 @@ from typing import Optional, List
 from nft import NFT
 from trait.collection import TraitCollection, TraitCollectionState
 
-description="""NFT manual generator
+description="""NFT editor and generator"""
+# shared args
+shared_parser = argparse.ArgumentParser(add_help=False)
+shared_parser.add_argument('--blueprint', help='JSON template for generating output json file', default='blueprint.json')
+shared_parser.add_argument('--nft-name-prefix', help='Prefix for NFT name in result json', default='NFT #')
+shared_parser.add_argument('--collection-id', '--id', help='Id of ordered collection from "_collections" attribute of traits. 0 - default not ordered,', default=0, type=int)
+shared_parser.add_argument('--svg-width', help='Default svg width when convert to png, if svg used as background layer', default=1080, type=int)
+shared_parser.add_argument('--svg-height', help='Default svg height when convert to png, if svg used as background layer', default=1080, type=int)
+# main mode
+parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter, parents=[shared_parser])
+subparsers = parser.add_subparsers(title="modes", dest="command")
+# viewer
+# parser.add_argument('--viewer', help='Starts in viewer mode', nargs='?', const=-1, default=None)
+parser_viewer = subparsers.add_parser('viewer', help="viewer mode", parents=[shared_parser])
+parser_viewer.add_argument('id', nargs='?', const=-1, default=None)
+# csv generator
 
-Compare your png or svg images to resulting NFT
-"""
-parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument('--svg-width', help='Default svg width when convert to png, if svg used as background layer', default=1080, type=int)
-parser.add_argument('--svg-height', help='Default svg height when convert to png, if svg used as background layer', default=1080, type=int)
-parser.add_argument('--blueprint', help='JSON template for generating output json file', default='blueprint.json')
-parser.add_argument('--viewer', help='Starts in viewer mode', nargs='?', const=-1, default=None)
-parser.add_argument('--nft-name-prefix', help='Prefix for NFT name in result json', default='NFT #')
-parser.add_argument('--collection-id', help='Id of ordered collection from "_collections" attribute of traits. 0 - default not ordered,', default=0, type=int)
-parser.add_argument('--csv-generate-path', help='Flag indicate to generate all possible valid combinations to provided csv file', default=None)
-parser.add_argument('--csv-generate-size', help='Number of NFTs which should be generated in csv file if --generate-csv-index provided', default=50, type=int)
-parser.add_argument('--csv-generate-respect-weights', help='Respect trait weight attribute in random generation', default=False, action='store_true')
+parser_csv = subparsers.add_parser('collection-generator', help="csv generator mode", parents=[shared_parser])
+parser_csv.add_argument('--csv', help='Path to output csv file (csv generator mode)', required=True, metavar="path")
+parser_csv.add_argument('--size', help='Size of resulting collection (csv generator mode)', default=50, type=int, metavar="size")
+parser_csv.add_argument('--weighted', help='Respect trait weights (csv generator mode)', default=False, action='store_true')
 
 args = parser.parse_args()
+print(args)
 
 NFT.name_prefix = args.nft_name_prefix
 NFT.load_blueprint(args.blueprint)
@@ -57,9 +68,9 @@ class App:
         self.viewer_instance = None
 
 app = App(args)
-if args.viewer:
+if args.command == 'viewer':
     viewer = app.show_viewer()
-    viewer.show_item_by_file_name(args.viewer)
+    viewer.show_item_by_file_name(args.id)
     viewer.mainloop()
 else:
     collection_list = TraitCollection.load_from_file('traits.json')
@@ -73,13 +84,18 @@ else:
 
     if not collection_list[args.collection_id].is_valid():
         exit()
-    # show wich blueprint using
-    print('Info: using "%s" as blueprint template' % collection_list[args.collection_id].blueprint_path)
-    # generate csv index
-    if args.csv_generate_path is not None:
-        state = TraitCollectionState(collection_list[args.collection_id])
-        print(args.csv_generate_respect_weights)
-        state.valid_combinations_to_csv(args.csv_generate_path, args.csv_generate_size, respect_weights=args.csv_generate_respect_weights)
+
+    collection = collection_list[args.collection_id]
+    # print collection blueprint path, info and healthchek messages
+    print('Info: using "%s" as blueprint template' % collection.blueprint_path)
+    print(collection.info)
+    collection.health_check()
+    
+    # csv generatir mode
+    if args.command == 'collection-generator':
+        state = TraitCollectionState(collection)
+        state.valid_combinations_to_csv(args.csv, args.size, respect_weights=args.weighted)
         exit()
+    # editor mode
     merge = Merge(args.svg_width, args.svg_height)
     app.show_editor(collection_list, args.collection_id, merge)
