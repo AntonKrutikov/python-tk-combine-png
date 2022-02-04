@@ -1,8 +1,5 @@
 
 import argparse
-from ipaddress import collapse_addresses
-
-from parso import parse
 from merge import Merge
 from viewer import Viewer
 from editor import Editor
