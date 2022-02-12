@@ -182,8 +182,9 @@ class TraitCollection():
                     for name, trait in value.items():
                         name:str
                         if not name.startswith('_'):
-                            trait = Trait.parse(name, attribute, trait)
-                            default.collection.append(trait)
+                            if not 'draft' in trait or trait['draft'] == False:
+                                trait = Trait.parse(name, attribute, trait)
+                                default.collection.append(trait)
         default.types = default.make_groups()
 
         # Load blueprint template

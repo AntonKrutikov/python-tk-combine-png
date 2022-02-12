@@ -30,7 +30,6 @@ parser_csv.add_argument('--size', help='Size of resulting collection (csv genera
 parser_csv.add_argument('--weighted', help='Respect trait weights (csv generator mode)', default=False, action='store_true')
 
 args = parser.parse_args()
-print(args)
 
 NFT.name_prefix = args.nft_name_prefix
 NFT.load_blueprint(args.blueprint)

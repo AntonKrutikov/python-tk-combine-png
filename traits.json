@@ -18,6 +18,7 @@
     ],
     "head": {
         "Head 1": {
+            "draft" : false,
             "group": "tattoo",
             "weight": 90,
             "file": [
