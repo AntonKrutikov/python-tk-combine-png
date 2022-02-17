@@ -1,3 +1,4 @@
+from collections import Counter
 import copy
 import json
 from random import random
@@ -487,6 +488,22 @@ class TraitCollectionState():
             print('Notice: Obtained only %s valid combinations of requested %s. (%s iterations done)' % (len(result), count, iterations))
         return result
 
+    def traits_rarity(self, combinations:Set[Tuple[Trait]]) -> Dict[Trait, float]:
+        """Return each Trait rarity in given set of combinations"""
+
+        traits_count = Counter()
+        traits_rarity:Dict[Trait, float] = {}
+
+        for variant in combinations:
+            for trait in variant:
+                traits_count[trait]+=1
+        
+        for trait, count in traits_count.items():
+            traits_rarity[trait] = 1/(count/len(combinations))
+
+        return traits_rarity
+        
+
     def valid_combinations_to_csv(self, path:str, count:int = 10, respect_weights:bool = False) -> None:
         """Return valid combinations with header row"""
         combinations = self.valid_combinations(count, respect_weights)
@@ -494,14 +511,22 @@ class TraitCollectionState():
         headers = [trait_type.name for trait_type in self.current_state]
         headers.insert(0,'name')
         headers.append('rarity_score')
+
+        traits_rarity = self.traits_rarity(combinations)
         
         try:
             with open(path,'w') as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow(headers)
                 for i,variant in enumerate(combinations):
-                    row = [trait.name for trait in variant]
+                    row = []
+                    score = 0
+                    for trait in variant:
+                        row.append(trait.name)
+                        score += traits_rarity[trait]
+
                     row.insert(0, '%s%s' % (self.collection.name_prefix, i+1))
+                    row.append(score)
                     csv_writer.writerow(row)
             print('\n%s created' % path)
         except Exception as e:
