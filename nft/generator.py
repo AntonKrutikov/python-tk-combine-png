@@ -1,36 +1,13 @@
 import argparse
-from typing import List,Dict,Tuple
 import csv
-from trait.collection import TraitCollection, TraitCollectionState
-from nft import NFT
-from trait.trait import Trait
-from merge import Merge
+
 from tqdm import tqdm
+from typing import List,Dict,Tuple
 
-
-description="""NFT collection generator
-
-Default input list: collection.csv
-    Default name for 1 column is "name" and it used as name field in result json
-    Default name for last column is "attribute_number" and it stored in result json if --attribute-name key exists
-    All columns between first and last interpreted as traits columns
-Default traits description: traits.json
-Default out directory: ./out
-"""
-parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument('--csv', help='CSV file with list of NFT combination', default='collection.csv')
-parser.add_argument('--first-column', help='Name of first column in CSV (used as name)', default='name')
-parser.add_argument('--last-column', help='Name of last column in CSV (used as attribute_number)', default='attribute_number')
-parser.add_argument('--traits', help='JSON description of traits', default='traits.json')
-# TODO: check, blueprint for this version respected ny NFT class itself
-# parser.add_argument('--blueprint', help='JSON template for generating output json file', default='blueprint.json')
-parser.add_argument('--out', help='Output folder for results', default='out')
-parser.add_argument('--svg-width', help='Default svg width when convert to png, if svg used as background layer', default=1080, type=int)
-parser.add_argument('--svg-height', help='Default svg height when convert to png, if svg used as background layer', default=1080, type=int)
-parser.add_argument('--use-names', help='Use name column from csv as out filename', action='store_true')
-parser.add_argument('--attribute-number', help='Store or not attribute_number column to result json', action='store_true')
-parser.add_argument('item', help='Index in input csv file to provide only this result instead of all output', default=None, type=int, nargs='?')
-parser.add_argument('--collection-id', help='Id of ordered collection from "_collections" attribute of traits. 0 - default not ordered,', default=0, type=int)
+from nft.collection import TraitCollection, TraitCollectionState
+from nft.nft import NFT
+from nft.trait import Trait
+from nft.merge import Merge
 
 def colored(text, r, g, b):
     return "\033[38;2;{};{};{}m{}\033[0m".format(r, g, b, text)
@@ -45,14 +22,14 @@ class Generator():
             exit()
 
         self.collection_list = collection_list
-        self.traits = collection_list[args.collection_id]
+        self.collection = collection_list[args.collection_id]
 
         self.merge = merge
        
         
     def load_csv(self) -> List:
         collection:List = []
-        with open(args.csv, 'r') as csvfile:
+        with open(self.args.csv, 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             header = None
             traits_name_index = None
@@ -62,13 +39,13 @@ class Generator():
                 if rn == 0:
                     header = row
                     try:
-                        traits_name_index = header.index(args.first_column)
+                        traits_name_index = header.index(self.args.first_column)
                     except ValueError as err:
                         print("Can't find first column with given name. Please provide column, that will be used as 'name' column and start index")
                         print("ValueError: %s" % err)
                         exit()
                     try:
-                        traits_attributes_index = header.index(args.last_column)
+                        traits_attributes_index = header.index(self.args.last_column)
                     except ValueError as err:
                         print("Can't find last column with given name. Please provide column, that will be used as 'attribute_number' column and end index")
                         print("ValueError: %s" % err)
@@ -98,7 +75,7 @@ class Generator():
                 nft = NFT(name=item['name'])
                 nft_traits:TraitCollection = TraitCollection()
                 for group_name, trait_name in item['traits'].items():
-                    trait = next((trait for trait in self.traits if trait.name == trait_name and trait.type_name == group_name), None)
+                    trait = next((trait for trait in self.collection if trait.name == trait_name and trait.type_name == group_name), None)
                     if trait is not None:
                         nft_traits.collection.append(trait)
                     if trait is None and trait_name != '':
@@ -157,7 +134,7 @@ class Generator():
                     # Add groups count to attributes too
                     for group, count in state.groups().items():
                         attributes.append({"group": group, "value": count})
-                    ok, err = nft.save()
+                    ok, err = nft.save(self.collection.blueprint_template)
                     if not ok:
                         errors[nft] = ['\t%s' % err]
                     else:
@@ -170,10 +147,3 @@ class Generator():
             print('%s: NFT "%s" is broken and not saved:' % (colored('Warning', 255, 0, 0), nft.name))
             for message in errors[nft]:
                 print(message)
-            
-
-if __name__ == "__main__":
-    args = parser.parse_args()
-    merge = Merge(svg_height=args.svg_height, svg_width=args.svg_width)
-    generator = Generator(args, merge)
-    generator.generate()

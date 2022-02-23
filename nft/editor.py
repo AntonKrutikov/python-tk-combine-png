@@ -1,25 +1,28 @@
+from random import choice
 import tkinter as tk
+
+from typing import List
 from tkinter import ttk
 from tkinter import font
-from nft import NFT
-from widget.image_viewer import ImageViewer
-from widget.vscroll_frame import VerticalScrolledFrame
-from trait.collection import TraitCollection, TraitCollectionState
-from trait.trait import TraitType
-from merge import Merge
-from typing import List
+
+from nft.collection import TraitCollection, TraitCollectionState
+from nft.trait import TraitType
+from nft.merge import Merge
+from nft.nft import NFT
+from nft.widget.image_viewer import ImageViewer
+from nft.widget.vscroll_frame import VerticalScrolledFrame
 
 class Editor(tk.Tk):
-    svg_options = { "default": { "width": 1080, "height": 1080 } }
-    name_prefix = ""
-
-    def __init__(self, collection_list:List[TraitCollection], collection_index:int, merge:Merge, **kwargs):
+    def __init__(self, collection_list:List[TraitCollection], collection_index:int, merge:Merge, skip_invalid:bool = False, **kwargs ):
         super().__init__(**kwargs)
 
         self.collection_list = collection_list
         collection = collection_list[collection_index]
         if len(collection.error_messages) > 0:
             print('\n'.join(collection.error_messages))
+        
+        self.skip_invalid = tk.BooleanVar(master=self)
+        self.skip_invalid.set(skip_invalid)
 
         self.traits = TraitCollectionState(collection)
 
@@ -29,28 +32,33 @@ class Editor(tk.Tk):
         self.minsize(900,600)
 
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
 
         self.image_viewer = ImageViewer(master=self, highlightthickness=1, borderwidth=1, relief="groove")
-        self.image_viewer.grid(row=0, column=0, sticky='nwse')
+        self.image_viewer.grid(row=0, column=0, sticky='nwse', rowspan=2)
         
         self.image_viewer.set_image(self.merge.combine(self.traits))
 
+        self.choice_options = tk.Frame(master=self)
+        self.choice_options.grid(row=0,column=1, sticky='we')
+        self.choice_cb_skip_invalid = tk.Checkbutton(master=self.choice_options, text='Skip invalid', onvalue=True, offvalue=False, var=self.skip_invalid)
+        self.choice_cb_skip_invalid.grid()
+
         self.choice_frame = VerticalScrolledFrame(master=self, highlightthickness=1, borderwidth=1, relief="groove", width=250)
-        self.choice_frame.grid(row=0,column=1, sticky='nwes')
+        self.choice_frame.grid(row=1,column=1, sticky='nwes')
         self.choice_frame.columnconfigure(0, weight=1)
         self.choice_frame.inner.columnconfigure(0, weight=1)
         for group in self.traits.current_state:
             self.add_to_choice(group)
 
         self.show_viewer_button = tk.Button(text="NFT Viewer") #command binded from App
-        self.show_viewer_button.grid(column=0, row=1, sticky='w', padx=10)
+        self.show_viewer_button.grid(column=0, row=2, sticky='w', padx=10)
 
         self.save_button = tk.Button(master=self, text="Save" ,command=self.save)
-        self.save_button.grid(row=1, column=1, sticky='nwes', pady=(5,10), padx=30)
+        self.save_button.grid(row=2, column=1, sticky='nwes', pady=(5,10), padx=30)
 
         self.saved_info = tk.Label(master=self)
-        self.saved_info.grid(row=1, column=0)
+        self.saved_info.grid(row=2, column=0)
 
         self.recheck_states()
 
@@ -117,20 +125,20 @@ class Editor(tk.Tk):
                 counter.configure(text="T:%s/%s F:%s/%s" % (index + 1, total, index_file + 1, total_files))
 
     def next_trait(self, group:TraitType, choice: tk.Frame):
-        trait, file = self.traits.next(group)
-        if trait is not None:
+        trait, file = self.traits.next(group, skip_invalid=self.skip_invalid.get())
+        if trait is not None or file is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
             self.image_viewer.set_image(self.merge.combine(self.traits))
-        self.update_counter(group)
-        self.recheck_states()
+            self.update_counter(group)
+            self.recheck_states()
 
     def prev_trait(self, group:TraitType, choice: tk.Frame):
-        trait, file = self.traits.prev(group)
-        if trait is not None:
+        trait, file = self.traits.prev(group, skip_invalid=self.skip_invalid.get())
+        if trait is not None or file is not None:
             self.set_text(choice.children['filename_lbl'], trait.name)
             self.image_viewer.set_image(self.merge.combine(self.traits))
-        self.update_counter(group)
-        self.recheck_states()
+            self.update_counter(group)
+            self.recheck_states()
 
     def recheck_conditions(self):
         """Add notify frame if trait adapted or not for one or more selected trait in other groups"""
@@ -215,8 +223,11 @@ class Editor(tk.Tk):
         
         if enabled:
             self.save_button.configure(state = 'normal')
+            self.choice_cb_skip_invalid.configure(state= 'normal')
         else:
             self.save_button.configure(state = 'disabled')
+            self.choice_cb_skip_invalid.configure(state= 'disabled')
+
 
     def recheck_states(self):
         """Update all condiitons, excludes, adaptions and save states"""

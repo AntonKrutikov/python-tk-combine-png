@@ -2,9 +2,8 @@ import os
 import glob
 import json
 import random
-from tkinter.messagebox import NO
+
 from typing import Optional, Tuple, Dict, List
-from unicodedata import name
 from PIL.Image import Image
 
 class NFT():

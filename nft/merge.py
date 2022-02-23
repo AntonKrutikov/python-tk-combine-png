@@ -1,8 +1,9 @@
-from io import BytesIO
 from typing import Optional
+from io import BytesIO
 from PIL import Image
 from cairosvg import svg2png
-from trait.collection import TraitCollectionState
+
+from nft.collection import TraitCollectionState
 
 class Merge():
     """Merge all images from TraitCollectionState into 1 resulting image"""

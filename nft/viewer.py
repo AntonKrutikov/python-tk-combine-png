@@ -1,40 +1,38 @@
-from doctest import master
 import tkinter as tk
-from tkinter import FLAT, PhotoImage, ttk
 import os
-from tkinter.messagebox import NO
-from turtle import st
-import widget.image_viewer as image_viewer
-from widget.vscroll_frame import VerticalScrolledFrame
-import json
-from PIL import Image,ImageTk
-from nft import NFT
+
 from typing import List
+from tkinter import ttk
+from PIL import Image
+
+from nft.nft import NFT
+from nft.widget.image_viewer import ImageViewer
+from nft.widget.vscroll_frame import VerticalScrolledFrame
 
 # default_out_path = './out'
 
 class DeleteButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='ui/delete.png', master=master)
+        self.icon= tk.PhotoImage(file='assets/delete.png', master=master)
         self.configure(image=self.icon)
 
 class RepairButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='ui/fix.png', master=master)
+        self.icon= tk.PhotoImage(file='assets/fix.png', master=master)
         self.configure(image=self.icon)
 
 class ShuffleNamesButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='ui/shuffle.png', master=master)
+        self.icon= tk.PhotoImage(file='assets/shuffle.png', master=master)
         self.configure(image=self.icon)
 
 class ShuffleButton(tk.Label):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.icon= tk.PhotoImage(file='ui/shuffle-bold.png', master=master)
+        self.icon= tk.PhotoImage(file='assets/shuffle-bold.png', master=master)
         self.configure(image=self.icon)
 
 class InfoFrame(VerticalScrolledFrame):
@@ -83,7 +81,7 @@ class Viewer(tk.Tk):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        self.nft_viewer = image_viewer.ImageViewer(self, highlightthickness=1, borderwidth=1, relief="groove")
+        self.nft_viewer = ImageViewer(self, highlightthickness=1, borderwidth=1, relief="groove")
         self.nft_viewer.grid(column=0, row=0, sticky='nwse')
 
         self.nav_frame = tk.Frame(self, pady=10)

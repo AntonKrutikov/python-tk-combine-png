@@ -1,5 +1,5 @@
 from typing import List
-from trait.file import TraitFile
+from nft.file import TraitFile
 
 class Trait():
     """Represent one trait with it attributes, including paths of files from trait.json"""

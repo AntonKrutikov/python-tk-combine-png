@@ -1,16 +1,15 @@
-from collections import Counter
 import copy
-import json
-from random import random
-from typing import Iterator, Set, Tuple, List, Dict, Optional
-from nft import NFT
-import trait
-import itertools
-import random
 import csv
-from trait.file import TraitFile
-from trait.trait import Trait
-from trait.trait import TraitType
+import json
+import random
+
+from typing import Iterator, Set, Tuple, List, Dict, Optional
+from collections import Counter
+
+from nft.nft import NFT
+from nft.file import TraitFile
+from nft.trait import Trait
+from nft.trait import TraitType
 
 def colored(text, r, g, b):
     return "\033[38;2;{};{};{}m{}\033[0m".format(r, g, b, text)
@@ -323,7 +322,7 @@ class TraitCollectionState():
     def current(self, trait_type:TraitType) -> Tuple[Trait, TraitFile]:
         return self.current_state[trait_type]
 
-    def next(self, trait_type:TraitType, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
+    def next(self, trait_type:TraitType, skip_invalid:bool = False, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
         """Return next file of trait or next trait"""
 
         trait, file = self.current(trait_type)
@@ -338,14 +337,17 @@ class TraitCollectionState():
                 file = trait.files[0]
             else:
                 if cycle == False:
-                    return None
+                    return (None,None)
                 trait = trait_type.traits[0]
                 file = trait.files[0]
 
         self.current_state[trait_type] = (trait, file)
+
+        if skip_invalid == True and self.valid() == False:
+            return self.next(trait_type, skip_invalid)
         return self.current(trait_type)
 
-    def prev(self, trait_type:TraitType, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
+    def prev(self, trait_type:TraitType, skip_invalid:bool = False, cycle:bool = True) ->Optional[Tuple[Trait, TraitFile]]:
         """Return previous file of trait or previous trait"""
 
         trait, file = self.current(trait_type)
@@ -360,11 +362,14 @@ class TraitCollectionState():
                 file = trait.files[-1]
             else:
                 if cycle == False:
-                    return None
+                    return (None,None)
                 trait = trait_type.traits[-1]
                 file = trait.files[-1]
 
         self.current_state[trait_type] = (trait, file)
+
+        if skip_invalid == True and self.valid() == False:
+            return self.prev(trait_type, skip_invalid)
         return self.current(trait_type)
 
     def current_list(self) -> List[Tuple[Trait, TraitFile]]:
