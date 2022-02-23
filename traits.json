@@ -1,40 +1,50 @@
 {
     "_name_prefix": "NFT main #",
-    "_blueprint":"blueprint2.json",
+    "_blueprint": "blueprint2.json",
     "_collections": [
         {
             "_name_prefix": "Ordered NFT #",
             "_json_order": [],
             "_json_order_exclusion": true,
-            "_image_order": ["body","hand"],
+            "_image_order": [
+                "body",
+                "hand"
+            ],
             "_image_order_exclusion": true
         },
         {
             "_json_order": [],
             "_json_order_exclusion": false,
-            "_image_order": ["foot"],
+            "_image_order": [
+                "foot"
+            ],
             "_image_order_exclusion": false
         }
     ],
     "head": {
         "Head 1": {
-            "draft" : false,
+            "draft": false,
             "group": "tattoo",
             "weight": 90,
             "file": [
                 "input/head-1.png",
                 {
-                    "path":"input/head-2.png",
-                    "adapted-to": ["Bod7y 1", "Left"]
+                    "path": "input/head-2.png",
+                    "adapted-to": [
+                        "Bod7y 1",
+                        "Left"
+                    ]
                 }
             ],
-            "exclude": ["Both"],
+            "exclude": [],
             "hidden": true
         },
         "Head 2": {
             "weight": 5,
             "file": "input/head-2.png",
-            "exclude": ["456"]
+            "exclude": [
+                "456"
+            ]
         },
         "Head 3": {
             "weight": 5,
@@ -46,7 +56,8 @@
             "weight": 50,
             "file": {
                 "path": "input/body-1.png"
-            }
+            },
+            "exclude": []
         },
         "Body 2": {
             "weight": 25,
@@ -57,8 +68,8 @@
                         "Head 3"
                     ],
                     "path": "input/body-red.png"
-                }
-                ,                {
+                },
+                {
                     "adapted-to": [
                         "Head 2"
                     ],
@@ -78,7 +89,9 @@
     },
     "hand": {
         "Left": {
-            "group": ["tattoo"],
+            "group": [
+                "tattoo"
+            ],
             "weight": 1,
             "file": "input/left-hand-1.png"
         },
@@ -96,18 +109,26 @@
         },
         "Both": {
             "weight": 1,
-            "group": ["jewelery"],
+            "group": [
+                "jewelery"
+            ],
             "file": [
                 "input/left-hand-1.png",
                 "input/right-hand-1.png"
             ],
-            "exclude": ["Head 1", "Head 2"]
+            "exclude": [
+                "Head 1",
+                "Head 2"
+            ]
         }
     },
     "foot": {
         "Left": {
             "weight": 1,
-            "file": "input/left-foot-1.png"
+            "file": "input/left-foot-1.png",
+            "exclude": [
+                "default"
+            ]
         },
         "Right": {
             "weight": 1,
@@ -130,7 +151,7 @@
                 }
             ]
         },
-        "transparent" :{
+        "transparent": {
             "weight": 1,
             "file": "input/transparent.png"
         }

@@ -1,16 +1,25 @@
-from random import choice
 import tkinter as tk
 
 from typing import List
 from tkinter import ttk
 from tkinter import font
+from typing import Optional
+
+from sklearn.metrics import consensus_score
 
 from nft.collection import TraitCollection, TraitCollectionState
 from nft.trait import TraitType
+from nft.trait import Trait
 from nft.merge import Merge
 from nft.nft import NFT
 from nft.widget.image_viewer import ImageViewer
 from nft.widget.vscroll_frame import VerticalScrolledFrame
+
+class ExcludeButton(tk.Label):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.icon= tk.PhotoImage(file='assets/exclude.png', master=master)
+        self.configure(image=self.icon)
 
 class Editor(tk.Tk):
     def __init__(self, collection_list:List[TraitCollection], collection_index:int, merge:Merge, skip_invalid:bool = False, **kwargs ):
@@ -23,6 +32,9 @@ class Editor(tk.Tk):
         
         self.skip_invalid = tk.BooleanVar(master=self)
         self.skip_invalid.set(skip_invalid)
+
+        # Mode activates on exclude button near Trait name clicked
+        self.exclusion_trait:Optional[Trait] = None
 
         self.traits = TraitCollectionState(collection)
 
@@ -51,6 +63,8 @@ class Editor(tk.Tk):
         for group in self.traits.current_state:
             self.add_to_choice(group)
 
+        self.bind('<Button 1>', lambda e: self.onClick())
+
         self.show_viewer_button = tk.Button(text="NFT Viewer") #command binded from App
         self.show_viewer_button.grid(column=0, row=2, sticky='w', padx=10)
 
@@ -62,18 +76,23 @@ class Editor(tk.Tk):
 
         self.recheck_states()
 
-    def add_to_choice(self, group:TraitType):
+    def onClick(self):
+        self.exclusion_trait = None
+        self.choice_frame.configure(cursor="arrow")
+
+    def add_to_choice(self, trait_type:TraitType):
         """Add selector for each traits group"""
-        trait, file = self.traits.current(group)
+        trait, file = self.traits.current(trait_type)
         
         font = ('system', 12)
         font_bold = ('system', 12, 'bold')
         lbl_width = 20
 
-        choice = tk.Frame(master=self.choice_frame.inner, name=group.name)
-        choice.group = group #save ref for group instance
+        choice = tk.Frame(master=self.choice_frame.inner, name=trait_type.name)
+        choice.group = trait_type #save ref for group instance
         choice.columnconfigure(1, weight=1)
-        title = tk.Label(master=choice, text="%s" % group.name, width=lbl_width, borderwidth = 3, font=font_bold, anchor='w')
+        title = tk.Label(master=choice, text="%s" % trait_type.name, width=lbl_width, borderwidth = 3, font=font_bold, anchor='w')
+        btn_exclude = ExcludeButton(master=choice, borderwidth = 3)
         counter = tk.Label(master=choice, font=('system', 10), foreground="#666666", name="counter_lbl")
         filename = tk.Label(master=choice, width=lbl_width, font=font, name="filename_lbl")
         self.set_text(filename, trait.name, 18)
@@ -81,24 +100,41 @@ class Editor(tk.Tk):
         exclude_frm = tk.Frame(master=choice, name="excludes_frm")
         mod_available = tk.Label(master=choice, name="mod_available_frm")
         separator=ttk.Separator(master=choice, orient='horizontal')
-        prev = tk.Button(master=choice, text="<",  width=1, name="prev_btn", command=lambda: self.prev_trait(group, choice))
-        next = tk.Button(master=choice, text=">", width=1, name="next_btn", command=lambda: self.next_trait(group, choice))
+        prev = tk.Button(master=choice, text="<",  width=1, name="prev_btn", command=lambda: self.prev_trait(trait_type, choice))
+        next = tk.Button(master=choice, text=">", width=1, name="next_btn", command=lambda: self.next_trait(trait_type, choice))
 
-        title.grid(row=0, column=0, columnspan=2,  sticky="ew")
-        counter.grid(row=0, column=2)
+        title.grid(row=0, column=0, columnspan=3,  sticky="ew")
+        counter.grid(row=0, column=3)
         prev.grid(row=1, column=0, sticky='e', padx=5)
         filename.grid(row=1, column=1, sticky='we')
-        next.grid(row=1, column=2, sticky='w', padx=10)
+        btn_exclude.grid(row=1, column=2)
+        next.grid(row=1, column=3, sticky='w', padx=10)
 
-        mod_available.grid(row=2, column=1, sticky='we')
-        condition_frm.grid(row=3, column=1, sticky='we')
-        exclude_frm.grid(row=4, column=1, sticky='we')
+        mod_available.grid(row=2, column=1, sticky='we', columnspan=2)
+        condition_frm.grid(row=3, column=1, sticky='we', columnspan=2)
+        exclude_frm.grid(row=4, column=1, sticky='we',  columnspan=2)
 
-        separator.grid(row=5, column=0, columnspan=3, pady=(10,0), sticky="we")
+        separator.grid(row=5, column=0, columnspan=4, pady=(10,0), sticky="we")
 
         choice.grid(column=0, sticky='ew')
 
-        self.update_counter(group)
+        filename.bind("<Button 1>", lambda e: self.onTraitNameClick(trait_type))
+        btn_exclude.bind("<Button 1>", lambda e: self.onExcludeClick(trait_type))
+
+        self.update_counter(trait_type)
+
+    def onExcludeClick(self, trait_type:TraitType):
+        self.choice_frame.configure(cursor="cross")
+        self.exclusion_trait = self.traits.current(trait_type)[0]
+        return "break"
+    def onTraitNameClick(self, trait_type:TraitType):
+        if self.exclusion_trait is not None:
+            target = self.traits.current(trait_type)[0]
+            trait = self.exclusion_trait
+            if trait.name != target.name:
+                self.traits.addExclusion(trait, target.name)
+                self.recheck_states()
+            self.exclusion_trait = None
 
     def set_text(self, label: tk.Label, text: str, max_chars: int = None) -> None:
         if max_chars != None and len(text) > max_chars:
@@ -182,8 +218,17 @@ class Editor(tk.Tk):
 
                 for name,ok in match:        
                     if ok:
-                        label = tk.Label(master=excludes_frm, text=name, font=('system', 12), foreground='#BF360C')
-                        label.pack()
+                        container = tk.Frame(master=excludes_frm)
+                        container.pack()
+                        label = tk.Label(master=container, text=name, font=('system', 12), foreground='#BF360C')
+                        label.grid(column=0, row=0)
+                        label_remove = tk.Label(master=container, text='-', font=('system', 12), foreground='#2E7D32')
+                        label_remove.grid(column=1, row=0)
+                        label_remove.bind("<Button 1>", lambda e, trait=trait, exclusion_name=name: self.removeExclusion(trait, exclusion_name))
+
+    def removeExclusion(self, trait:Trait, exclusion_name:str):
+        self.traits.removeExclusion(trait, exclusion_name)
+        self.recheck_states()
 
     def recheck_adaptions(self):
         """Add notify frame to each group if modified version available for selected traits in other groups"""

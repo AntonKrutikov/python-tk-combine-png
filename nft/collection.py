@@ -6,6 +6,8 @@ import random
 from typing import Iterator, Set, Tuple, List, Dict, Optional
 from collections import Counter
 
+from parso import parse
+
 from nft.nft import NFT
 from nft.file import TraitFile
 from nft.trait import Trait
@@ -141,6 +143,8 @@ class TraitCollection():
         self.name_prefix:str = ''
         self.blueprint_path:str = None
         self.blueprint_template:Dict = None
+        self.original_json:dict = None
+        self.original_json_path:str = None
 
     def __iter__(self) -> Iterator[Trait]:
         return self.collection.__iter__()
@@ -154,6 +158,8 @@ class TraitCollection():
         copy.types = self.types.copy()
         copy.blueprint_path = self.blueprint_path
         copy.blueprint_template = self.blueprint_template
+        copy.original_json = self.original_json
+        copy.original_json_path = self.original_json_path
         return copy
 
     @classmethod
@@ -170,6 +176,8 @@ class TraitCollection():
 
         with open(path) as json_file:
             parsed = json.load(json_file)
+            default.original_json = parsed
+            default.original_json_path = path
             for attribute, value in parsed.items():
                 attribute:str
                 if attribute == '_collections' and isinstance(value, list):
@@ -304,6 +312,10 @@ class TraitCollection():
             for exclude in trait.exclude:
                 if exclude not in [t.name for t in self.collection]:
                     print("Notice: Trait '%s -> %s' excluded for unknown trait name '%s'" % (trait.type_name, trait.name, exclude))
+
+    def dumpTraitsJson(self):
+        with open(self.original_json_path, 'w', encoding='utf-8') as f:
+            json.dump(self.original_json, f, ensure_ascii=False, indent=4)
 
 class TraitCollectionState():
     """Wrapper around TraitCollection which store selected trait and file per group. 
@@ -537,3 +549,14 @@ class TraitCollectionState():
         except Exception as e:
             print('Error: can\'t generate csv index. ', e)
        
+    def addExclusion(self, trait:Trait, exclusion_name:str): 
+        if exclusion_name not in trait.exclude:
+            trait.exclude.append(exclusion_name)
+            self.collection.original_json[trait.type_name][trait.name]["exclude"] = trait.exclude
+            self.collection.dumpTraitsJson()
+
+    def removeExclusion(self, trait:Trait, exclusion_name:str): 
+        if exclusion_name in trait.exclude:
+            trait.exclude.remove(exclusion_name)
+            self.collection.original_json[trait.type_name][trait.name]["exclude"] = trait.exclude
+            self.collection.dumpTraitsJson()
